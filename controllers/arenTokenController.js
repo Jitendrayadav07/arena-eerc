@@ -32,8 +32,8 @@ const getArenaProTokenBalances = async (wallet_address) => {
         }
         // Fetch token balances from Arena Pro API
         const lowerWalletAddress = wallet_address.toLowerCase();
-        const balanceUrl = `https://api.arenapro.io/token_balances_view?user_address=eq.${lowerWalletAddress}`;
 
+        const balanceUrl = `https://api.arenapro.io/token_balances_view?user_address=eq.${lowerWalletAddress}`;
         const response = await axios.get(balanceUrl);
         const tokenBalances = response.data;
 
@@ -46,24 +46,37 @@ const getArenaProTokenBalances = async (wallet_address) => {
             };
         }
 
-        // Calculate total portfolio value and format data
+        // Filter tokens with balance greater than 0 and calculate total portfolio value
         let totalValueUSD = 0;
-        const holdings = tokenBalances.map(token => {
-            const tokenValue = token.balance * token.latest_price_usd;
-            totalValueUSD += tokenValue;
-            
-            return {
-                token_name: token.token_name,
-                token_symbol: token.token_symbol,
-                token_contract_address: token.token_contract_address,
-                balance: token.balance,
-                price: token.latest_price_usd,
-                value: tokenValue,
-                photo_url: token.photo_url,
-                creator_address: token.creator_address,
-                pair_address: token.pair_address
-            };
-        });
+        const holdings = tokenBalances
+            .filter(token => token.balance > 0) // Only include tokens with balance > 0
+            .map(token => {
+                const tokenValue = token.balance * token.latest_price_usd;
+                totalValueUSD += tokenValue;
+                
+                return {
+                    token_name: token.token_name,
+                    token_symbol: token.token_symbol,
+                    token_contract_address: token.token_contract_address,
+                    balance: token.balance,
+                    price: token.latest_price_usd,
+                    value: tokenValue,
+                    photo_url: token.photo_url,
+                    creator_address: token.creator_address,
+                    pair_address: token.pair_address,
+                    is_eerc: token.is_eerc,
+                    is_auditor: token.is_auditor,
+                    is_tweeted: token.is_tweeted,
+                    registrationVerifier: token.registrationVerifier || null,
+                    mintVerifier: token.mintVerifier || null,
+                    withdrawVerifier: token.withdrawVerifier || null,
+                    transferVerifier: token.transferVerifier || null,
+                    burnVerifier: token.burnVerifier || null,
+                    babyJubJub: token.babyJubJub || null,
+                    registrar: token.registrar || null,
+                    encryptedERC: token.encryptedERC || null
+                };
+            });
 
         // Sort by value descending
         holdings.sort((a, b) => b.value - a.value);
@@ -88,7 +101,6 @@ const getTreasuryTokens = async (req, res) => {
         const wallet_address = '0x94a27A070aE4ed87e5025049a407F8ddf1515886';
         
         const tokenData = await getArenaProTokenBalances(wallet_address);
-        console.log("tokenData",tokenData)
         if (typeof tokenData === 'string') {
             return res.status(400).send(Response.sendResponse(false, null, tokenData, 400));
         }
