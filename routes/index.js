@@ -2,11 +2,9 @@
 const express = require("express");
 const router = express.Router();
 
-const roleRoutes = require("./role");
-// const twitterUser = require("./twitterUser");
+const arenaTokenRoutes = require("./arena_token");
 
-router.use("/role", roleRoutes);
-// router.use("/twitter", twitterUser);
+router.use("/arena-token", arenaTokenRoutes);
 
 
 module.exports = router;

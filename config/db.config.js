@@ -21,27 +21,27 @@ const sequelize = new Sequelize(
         idle: 10000 // Maximum time in milliseconds that a connection can be idle before being released
       }
     }
-  );
+);
   
   
   // Test the database connection
-  sequelize
+sequelize
     .authenticate()
     .then(() => {
       console.log("Database connection has been established successfully.");
     })
   .catch((err) => {
       console.error("Unable to connect to the database:", err);
-  });
+});
   
   
-  const db = {};
+const db = {};
   
-  db.Sequelize = Sequelize;
-  db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+db.sequelize = sequelize;
 
-  //All Model File Import 
-db.roles = require("../models/role")(sequelize,Sequelize);
-db.twitter_user = require("../models/twitter_user")(sequelize,Sequelize);
+ //All Model File Import 
 
-  module.exports = db;
+db.tbl_arena_tokens = require("../models/tbl_arena_tokens")(sequelize, Sequelize);
+
+module.exports = db;
