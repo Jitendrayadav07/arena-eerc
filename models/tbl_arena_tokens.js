@@ -52,10 +52,17 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: 0
       },
+      is_auditor: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: 0
+      },
+      is_tweeted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: 0
+      }
     }, {
       freezeTableName: true,
       timestamps: true, // system_created is manually handled
-      underscored: true
     });
   
     return ArenaTokenCoin;

@@ -8,7 +8,9 @@ const app = express();
 const path = require('path')
 const dotenv = require('dotenv');
 const cron = require('./cron');
+// const tokenTweetTwitter = require('./tokenTweetTwitter');
 dotenv.config();
+const routes = require("./routes");
 
 app.use(formData.parse());
 app.use(bodyParser.json());
@@ -25,7 +27,7 @@ app.use(express.static('public'));
 const sequelizeDB = require("./config/db.config");
 sequelizeDB.sequelize.sync(sequelizeDB);
 
-
+app.use("/v1", routes);
 
 const PORT = process.env.PORT || 8000;
 

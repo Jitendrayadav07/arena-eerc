@@ -97,7 +97,6 @@ const fetchArenaTokens = async () => {
             const existingToken = await db.tbl_arena_tokens.findOne({
                 where: { contract_address: arenaProData[0].token_contract_address }
             });
-            
             if (!existingToken) {
                 const arenaToken = await db.tbl_arena_tokens.create({ 
                     contract_address: arenaProData[0].token_contract_address, 

@@ -26,6 +26,7 @@
     "node-cron": "^4.2.1",
     "oauth": "^0.10.0",
     "os": "^0.1.2",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "twitter-api-v2": "^1.27.0"
   }
 }
