@@ -15,27 +15,46 @@ module.exports = (sequelize, DataTypes) => {
       symbol: {
         type: DataTypes.TEXT
       },
-      status: {
-        type: DataTypes.TEXT
-      },
       creator_address: {
         type: DataTypes.TEXT
       },
-      create_token_tx_id: {
+      pair_address: {
         type: DataTypes.TEXT
       },
-      pair_address: {
+      registrationVerifier: {
+        type: DataTypes.TEXT
+      },
+      mintVerifier: {
+        type: DataTypes.TEXT
+      },
+      withdrawVerifier: {
+        type: DataTypes.TEXT
+      },
+      transferVerifier: {
+        type: DataTypes.TEXT
+      },
+      burnVerifier: {
+        type: DataTypes.TEXT
+      },
+      babyJubJub: {
+        type: DataTypes.TEXT
+      },
+      registrar: {
+        type: DataTypes.TEXT
+      },
+      encryptedERC: {
         type: DataTypes.TEXT
       },
       photo_url: {
         type: DataTypes.TEXT
       },
       is_eerc: {
-        type: DataTypes.BOOLEAN
+        type: DataTypes.BOOLEAN,
+        defaultValue: 0
       },
     }, {
       freezeTableName: true,
-      timestamps: false, // system_created is manually handled
+      timestamps: true, // system_created is manually handled
       underscored: true
     });
   

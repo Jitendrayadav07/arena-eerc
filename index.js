@@ -5,9 +5,9 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const session = require('express-session');
 const app = express();
-const routes = require("./routes");
 const path = require('path')
 const dotenv = require('dotenv');
+const cron = require('./cron');
 dotenv.config();
 
 app.use(formData.parse());
@@ -25,13 +25,13 @@ app.use(express.static('public'));
 const sequelizeDB = require("./config/db.config");
 sequelizeDB.sequelize.sync(sequelizeDB);
 
-// All routes
-app.use("/v1", routes);
+
 
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log('Cron job started - will run every minute');
 }).on('error', (err) => {
     console.error('Server failed to start:', err);
     process.exit(1);
