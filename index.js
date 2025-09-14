@@ -8,7 +8,7 @@ const app = express();
 const path = require('path')
 const dotenv = require('dotenv');
 const cron = require('./cron');
-// const tokenTweetTwitter = require('./tokenTweetTwitter');
+const tokenTweetTwitter = require('./tokenTweetTwitter');
 dotenv.config();
 const routes = require("./routes");
 
