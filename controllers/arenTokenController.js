@@ -101,27 +101,7 @@ const getTreasuryTokens = async (req, res) => {
 
             } catch (apiError) {
                 console.error(`Error fetching Arena data for ${contractAddress}:`, apiError.message);
-                
-                // Still include the token with basic database info
-                let obj = {
-                    token_name: token.name || 'Unknown',
-                    token_symbol: token.symbol || 'UNKNOWN',
-                    token_contract_address: contractAddress,
-                    balance: 0,
-                    price: 0,
-                    value: 0,
-                    photo_url: null,
-                    pair_address: null,
-                    registrationVerifier: token.registrationVerifier,
-                    mintVerifier: token.mintVerifier,
-                    withdrawVerifier: token.withdrawVerifier,
-                    transferVerifier: token.transferVerifier,
-                    burnVerifier: token.burnVerifier,
-                    babyJubJub: token.babyJubJub,
-                    registrar: token.registrar,
-                    encryptedERC: token.encryptedERC
-                }
-                combinedTokenData.push(obj);
+                continue;
             }
         }
         
