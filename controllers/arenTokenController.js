@@ -3,6 +3,31 @@ const db = require("../config/db.config");
 const axios = require("axios");
 const { ethers } = require("ethers");
 
+// Function to get token balance from smart contract
+const getTokenBalance = async (contractAddress, walletAddress) => {
+    try {
+        // Create a provider (Avalanche C-Chain RPC)
+        const provider = new ethers.JsonRpcProvider('https://api.avax.network/ext/bc/C/rpc');
+        
+        // ERC-20 ABI for balanceOf function
+        const erc20ABI = [
+            "function balanceOf(address owner) view returns (uint256)"
+        ];
+        
+        // Create contract instance
+        const contract = new ethers.Contract(contractAddress, erc20ABI, provider);
+        
+        // Get balance
+        const balanceWei = await contract.balanceOf(walletAddress);
+        const balance = ethers.formatUnits(balanceWei, 18); // Assuming 18 decimals
+        
+        return balance;
+    } catch (error) {
+        console.error(`Error fetching balance for ${contractAddress}:`, error.message);
+        return '0';
+    }
+};
+
 
 const getAllEercArenaTokens = async (req, res) => {
     try {
@@ -20,92 +45,96 @@ const getAllEercArenaTokens = async (req, res) => {
     }
 }
 
-// Function to get Arena Pro token balances for a wallet address
-const getArenaProTokenBalances = async (wallet_address) => {
-    try {
-        if (!wallet_address) {
-            return "Wallet address is required";
-        }
-
-        if (!ethers.isAddress(wallet_address)) {
-            return "Invalid wallet address format";
-        }
-        // Fetch token balances from Arena Pro API
-        const lowerWalletAddress = wallet_address.toLowerCase();
-
-        const balanceUrl = `https://api.arenapro.io/token_balances_view?user_address=eq.${lowerWalletAddress}`;
-        const response = await axios.get(balanceUrl);
-        const tokenBalances = response.data;
-
-        if (!tokenBalances || tokenBalances.length === 0) {
-            return {
-                wallet_address,
-                total_tokens: 0,
-                total_value_usd: 0,
-                holdings: []
-            };
-        }
-
-        // Filter tokens with balance greater than 0 and calculate total portfolio value
-        let totalValueUSD = 0;
-        const holdings = tokenBalances
-            .filter(token => token.balance > 0) // Only include tokens with balance > 0
-            .map(token => {
-                const tokenValue = token.balance * token.latest_price_usd;
-                totalValueUSD += tokenValue;
-                
-                return {
-                    token_name: token.token_name,
-                    token_symbol: token.token_symbol,
-                    token_contract_address: token.token_contract_address,
-                    balance: token.balance,
-                    price: token.latest_price_usd,
-                    value: tokenValue,
-                    photo_url: token.photo_url,
-                    creator_address: token.creator_address,
-                    pair_address: token.pair_address,
-                    is_eerc: token.is_eerc,
-                    is_auditor: token.is_auditor,
-                    is_tweeted: token.is_tweeted,
-                    registrationVerifier: token.registrationVerifier || null,
-                    mintVerifier: token.mintVerifier || null,
-                    withdrawVerifier: token.withdrawVerifier || null,
-                    transferVerifier: token.transferVerifier || null,
-                    burnVerifier: token.burnVerifier || null,
-                    babyJubJub: token.babyJubJub || null,
-                    registrar: token.registrar || null,
-                    encryptedERC: token.encryptedERC || null
-                };
-            });
-
-        // Sort by value descending
-        holdings.sort((a, b) => b.value - a.value);
-
-        const responseData = {
-            wallet_address,
-            total_tokens: holdings.length,
-            total_value_usd: totalValueUSD.toFixed(2),
-            holdings: holdings
-        };
-        
-        return responseData;
-        
-    } catch (error) {
-        console.error('Error in getArenaProTokenBalances:', error.message);
-        return error.message;
-    }
-}
-
 const getTreasuryTokens = async (req, res) => {
     try {
         const wallet_address = '0x94a27A070aE4ed87e5025049a407F8ddf1515886';
         
-        const tokenData = await getArenaProTokenBalances(wallet_address);
-        if (typeof tokenData === 'string') {
-            return res.status(400).send(Response.sendResponse(false, null, tokenData, 400));
+        // Get tokens from database
+        let tokenData = await db.tbl_arena_tokens.findAll({
+            where: {
+                is_eerc: 1,
+                is_auditor: 1
+            }
+        });
+
+        let combinedTokenData = [];
+
+        for(let i = 0; i < tokenData.length; i++){
+            const token = tokenData[i];
+            let contractAddress = token.contract_address;
+
+            try {
+                // Call Arena API for this specific token
+                const arenaApiUrl = `https://api.arenapro.io/tokens_view?token_contract_address=eq.${contractAddress}`;
+                
+                const arenaResponse = await axios.get(arenaApiUrl);
+                const arenaData = arenaResponse.data;
+
+                if (arenaData && arenaData.length > 0) {
+                    const balance = await getTokenBalance(contractAddress, wallet_address);
+                    const price = parseFloat(arenaData[0].latest_price_usd) || 0;
+                    const balanceNum = parseFloat(balance) || 0;
+                    const value = balanceNum * price;
+
+                    let obj = {
+                        token_name: arenaData[0].token_name,
+                        token_symbol: arenaData[0].token_symbol,
+                        token_contract_address: contractAddress,
+                        balance: balanceNum,
+                        price: price,
+                        value: value,
+                        photo_url: arenaData[0].dexscreener_image_url || arenaData[0].photo_url,
+                        pair_address: arenaData[0].pair_address,
+                        registrationVerifier: token.registrationVerifier,
+                        mintVerifier: token.mintVerifier,
+                        withdrawVerifier: token.withdrawVerifier,
+                        transferVerifier: token.transferVerifier,
+                        burnVerifier: token.burnVerifier,
+                        babyJubJub: token.babyJubJub,
+                        registrar: token.registrar,
+                        encryptedERC: token.encryptedERC
+                    }
+                    combinedTokenData.push(obj);
+                } else {
+                    console.log(`No Arena data found for ${contractAddress}`);
+                }
+
+            } catch (apiError) {
+                console.error(`Error fetching Arena data for ${contractAddress}:`, apiError.message);
+                
+                // Still include the token with basic database info
+                let obj = {
+                    token_name: token.name || 'Unknown',
+                    token_symbol: token.symbol || 'UNKNOWN',
+                    token_contract_address: contractAddress,
+                    balance: 0,
+                    price: 0,
+                    value: 0,
+                    photo_url: null,
+                    pair_address: null,
+                    registrationVerifier: token.registrationVerifier,
+                    mintVerifier: token.mintVerifier,
+                    withdrawVerifier: token.withdrawVerifier,
+                    transferVerifier: token.transferVerifier,
+                    burnVerifier: token.burnVerifier,
+                    babyJubJub: token.babyJubJub,
+                    registrar: token.registrar,
+                    encryptedERC: token.encryptedERC
+                }
+                combinedTokenData.push(obj);
+            }
         }
         
-        return res.status(200).send(Response.sendResponse(true, tokenData, null, 200));
+        // Calculate total value
+        const totalValue = combinedTokenData.reduce((sum, token) => sum + token.value, 0);
+        
+        return res.status(200).send(Response.sendResponse(true, {
+            wallet_address: wallet_address,
+            total_tokens: combinedTokenData.length,
+            total_value_usd: totalValue.toFixed(2),
+            holdings: combinedTokenData
+        }, null, 200));
+        
     } catch (err) {
         console.error('Error in getTreasuryTokens:', err);
         return res.status(500).send(Response.sendResponse(false, null, "Error occurred while fetching treasury tokens", 500));
