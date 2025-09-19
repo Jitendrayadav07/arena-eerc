@@ -6,5 +6,6 @@ router.get("/", arenaTokenController.getAllEercArenaTokens);
 
 router.get("/treasury-tokens", arenaTokenController.getTreasuryTokens);
 
+router.get("/get-eerc-token-verified", arenaTokenController.getEercTokenVerified);
 
 module.exports = router;

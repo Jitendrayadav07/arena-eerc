@@ -41,7 +41,7 @@ const getAllEercArenaTokens = async (req, res) => {
         );
         return res.status(200).send(Response.sendResponse(true,response,null,200));
     }catch(err){
-        return res.status(500).send(Response.sendResponse(false,null,SHILL_CATEGORY_CONSTANTS_STATUS.ERROR_OCCURED,500));
+        return res.status(500).send(Response.sendResponse(false,null,err.message,500));
     }
 }
 
@@ -50,14 +50,9 @@ const getTreasuryTokens = async (req, res) => {
         const wallet_address = '0x94a27A070aE4ed87e5025049a407F8ddf1515886';
         
         // Get tokens from database
-        let tokenData = await db.tbl_arena_tokens.findAll({
-            where: {
-                is_eerc: 1,
-                is_auditor: 1
-            }
-        });
+        let tokenData = await db.tbl_arena_tokens.findAll();
 
-        let combinedTokenData = [];
+        let response = [];
 
         for(let i = 0; i < tokenData.length; i++){
             const token = tokenData[i];
@@ -94,7 +89,7 @@ const getTreasuryTokens = async (req, res) => {
                         registrar: token.registrar,
                         encryptedERC: token.encryptedERC
                     }
-                    combinedTokenData.push(obj);
+                    response.push(obj);
                 } else {
                     console.log(`No Arena data found for ${contractAddress}`);
                 }
@@ -105,15 +100,7 @@ const getTreasuryTokens = async (req, res) => {
             }
         }
         
-        // Calculate total value
-        const totalValue = combinedTokenData.reduce((sum, token) => sum + token.value, 0);
-        
-        return res.status(200).send(Response.sendResponse(true, {
-            wallet_address: wallet_address,
-            total_tokens: combinedTokenData.length,
-            total_value_usd: totalValue.toFixed(2),
-            holdings: combinedTokenData
-        }, null, 200));
+        return res.status(200).send(Response.sendResponse(true,  response , null, 200));
         
     } catch (err) {
         console.error('Error in getTreasuryTokens:', err);
@@ -121,7 +108,22 @@ const getTreasuryTokens = async (req, res) => {
     }
 }
 
+const getEercTokenVerified = async (req, res) => {
+    try {
+        let response = await db.tbl_arena_tokens.findAll({
+            where: {
+                is_eerc: 1,
+                is_auditor: 1
+            }
+        });
+        return res.status(200).send(Response.sendResponse(true, response, null, 200));
+    }catch(err){
+        return res.status(500).send(Response.sendResponse(false, null, "Error occurred while fetching EERC token verified", 500));
+    }
+}
+
 module.exports = {
     getAllEercArenaTokens,
-    getTreasuryTokens
+    getTreasuryTokens,
+    getEercTokenVerified
 }
