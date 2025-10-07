@@ -28,23 +28,6 @@ const getTokenBalance = async (contractAddress, walletAddress) => {
     }
 };
 
-
-const getAllEercArenaTokens = async (req, res) => {
-    try {
-        let response = await db.tbl_arena_tokens.findAll(
-            {
-                where: {
-                    is_eerc: 1,
-                    is_auditor : 1
-                }
-            }
-        );
-        return res.status(200).send(Response.sendResponse(true,response,null,200));
-    }catch(err){
-        return res.status(500).send(Response.sendResponse(false,null,err.message,500));
-    }
-}
-
 const getTreasuryTokens = async (req, res) => {
     try {
         const wallet_address = '0x94a27A070aE4ed87e5025049a407F8ddf1515886';
@@ -123,7 +106,6 @@ const getEercTokenVerified = async (req, res) => {
 }
 
 module.exports = {
-    getAllEercArenaTokens,
     getTreasuryTokens,
     getEercTokenVerified
 }
