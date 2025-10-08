@@ -116,6 +116,6 @@ const fetchArenaTokens = async () => {
     }
 };
 
-cron.schedule('* * * * *', fetchArenaTokens);
+cron.schedule('0 * * * *', fetchArenaTokens);
 
 module.exports = cron;
