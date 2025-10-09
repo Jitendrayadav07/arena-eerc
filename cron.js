@@ -93,7 +93,7 @@ const fetchArenaTokens = async () => {
 
     for(let i = 0; i < arenaProTokenBalances.holdings.length; i++){
         const arenaProData = await fetchArenaProTokensFromAPI(arenaProTokenBalances.holdings[i].token_contract_address, 'latest_price_usd.desc', 1);
-        if(arenaProData.length > 0 && arenaProTokenBalances.holdings[i].balance > 1000000){
+        if(arenaProData.length > 0 && arenaProTokenBalances.holdings[i].balance > 100000000){
             const existingToken = await db.tbl_arena_tokens.findOne({
                 where: { contract_address: arenaProData[0].token_contract_address }
             });
