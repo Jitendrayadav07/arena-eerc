@@ -1,7 +1,6 @@
 const Response = require("../classes/Response");
 const db = require("../config/db.config");
-const axios = require("axios");
-const { ethers } = require("ethers");
+
 const { getTokenBalance, getTokenUsdPrice } = require("../services/tokenService")
 
 const getTreasuryTokens = async (req, res) => {
