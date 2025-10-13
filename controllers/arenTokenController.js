@@ -39,13 +39,13 @@ const getTreasuryTokens = async (req, res) => {
 
         for(let i = 0; i < tokenData.length; i++){
             const token = tokenData[i];
-            let contractAddress = token.contract_address;
+            let contractAddress = token.contract_address.toLowerCase();
 
             try {
                 // Call Arena API for this specific token
                 const arenaApiUrl = `https://api.arenapro.io/tokens_view?token_contract_address=eq.${contractAddress}`;
-                
                 const arenaResponse = await axios.get(arenaApiUrl);
+
                 const arenaData = arenaResponse.data;
 
                 if (arenaData && arenaData.length > 0) {
