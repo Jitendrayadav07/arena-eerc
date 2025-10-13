@@ -1,7 +1,5 @@
 const Response = require("../classes/Response");
 const db = require("../config/db.config");
-const axios = require("axios");
-const { ethers } = require("ethers");
 const { getTokenBalance, getTokenUsdPrice } = require("../services/tokenService")
 
 const getUserWallet = async (req, res) => {
@@ -16,15 +14,21 @@ const getUserWallet = async (req, res) => {
       },
       raw: true
     });
-    // Fetch all token data in parallel
+ 
     const tokens = await Promise.all(
       tokenData.map(async (token) => {
         try {
           let contractAddress = token.contract_address.toLowerCase();
           const tokenDetails = await getTokenBalance(contractAddress, wallet_address);
           const balanceNum = parseFloat(tokenDetails.balance) || 0;
-          const price = await getTokenUsdPrice(contractAddress);
-          const value = balanceNum * price;
+          let price = 0;
+          let value = 0;
+
+          if (balanceNum > 0) {
+            price = await getTokenUsdPrice(contractAddress);
+            value = balanceNum * price;
+          }
+
 
           return {
             name: token.token_name || token.name || "",
@@ -58,9 +62,6 @@ const getUserWallet = async (req, res) => {
   }
 };
 
-
-
-
 module.exports = {
-    getUserWallet
+  getUserWallet
 }
