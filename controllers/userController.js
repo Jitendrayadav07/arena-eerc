@@ -1,44 +1,63 @@
 const Response = require("../classes/Response");
 const db = require("../config/db.config");
 const axios = require("axios");
+const { ethers } = require("ethers");
+const { getTokenBalance, getTokenUsdPrice } = require("../services/tokenService")
 
 const getUserWallet = async (req, res) => {
   try {
-    const wallet = req.query.wallet; 
-    const lowerWalletAddress = wallet.toLowerCase();
+    const wallet = req.query.wallet;
+    const wallet_address = wallet.toLowerCase();
 
-    const dbTokens = await db.tbl_arena_tokens.findAll({
+    const tokenData = await db.tbl_arena_tokens.findAll({
       where: {
         is_eerc: 1,
         is_auditor: 1
       },
       raw: true
     });
+    // Fetch all token data in parallel
+    const tokens = await Promise.all(
+      tokenData.map(async (token) => {
+        try {
+          let contractAddress = token.contract_address.toLowerCase();
+          const tokenDetails = await getTokenBalance(contractAddress, wallet_address);
+          const balanceNum = parseFloat(tokenDetails.balance) || 0;
+          const price = await getTokenUsdPrice(contractAddress);
+          const value = balanceNum * price;
 
-    const { data } = await axios.get(
-      `https://api.arenapro.io/token_balances_view?user_address=eq.${lowerWalletAddress}`
+          return {
+            name: token.token_name || token.name || "",
+            token_symbol: token.symbol || "",
+            photo_url: token.photo_url || "",
+            balance: balanceNum,
+            price,
+            value
+          };
+        } catch (err) {
+          console.error(`Error fetching data for token ${token.contract_address}:`, err.message);
+          return null;
+        }
+      })
     );
 
-    const tokens = data
-      .filter(t => dbTokens.find(dbT => dbT.contract_address.toLowerCase() === t.token_contract_address.toLowerCase()))
-      .map(t => ({
-        name: t.token_name,
-        token_symbol: t.token_symbol,
-        photo_url: t.photo_url,
-        balance: Number(t.balance),
-        price: Number(t.latest_price_usd),
-        value: Number(t.balance) * Number(t.latest_price_usd)
-      }));
+    // Remove null entries
+    const filteredTokens = tokens.filter(Boolean);
+
+    filteredTokens.sort((a, b) => b.value - a.value);
 
     return res
       .status(200)
-      .send(Response.sendResponse(true, tokens, null, 200));
+      .send(Response.sendResponse(true, filteredTokens, null, 200));
+
   } catch (error) {
+    console.error("getUserWallet Error:", error);
     return res
       .status(500)
       .send(Response.sendResponse(false, null, error.message, 500));
   }
 };
+
 
 
 
