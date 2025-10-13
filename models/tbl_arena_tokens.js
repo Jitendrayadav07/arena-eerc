@@ -59,7 +59,11 @@ module.exports = (sequelize, DataTypes) => {
       is_tweeted: {
         type: DataTypes.BOOLEAN,
         defaultValue: 0
-      }
+      },
+      decimals: {
+        type: DataTypes.INTEGER,
+        defaultValue: 18
+      },
     }, {
       freezeTableName: true,
       timestamps: true, // system_created is manually handled
