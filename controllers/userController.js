@@ -18,17 +18,13 @@ const getUserWallet = async (req, res) => {
     const tokens = await Promise.all(
       tokenData.map(async (token) => {
         try {
-          let contractAddress = token.contract_address.toLowerCase();
+          const contractAddress = token.contract_address.toLowerCase();
+
           const tokenDetails = await getTokenBalance(contractAddress, wallet_address);
           const balanceNum = parseFloat(tokenDetails.balance) || 0;
-          let price = 0;
-          let value = 0;
 
-          if (balanceNum > 0) {
-            price = await getTokenUsdPrice(contractAddress);
-            value = balanceNum * price;
-          }
-
+          const price = await getTokenUsdPrice(contractAddress);
+          const value = balanceNum * price;
 
           return {
             name: token.token_name || token.name || "",
