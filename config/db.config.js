@@ -43,5 +43,7 @@ db.sequelize = sequelize;
  //All Model File Import 
 
 db.tbl_arena_tokens = require("../models/tbl_arena_tokens")(sequelize, Sequelize);
+db.tbl_entities = require("../models/tbl_entity")(sequelize, Sequelize);
+db.tbl_wallets = require("../models/tbl_wallet")(sequelize, Sequelize);
 
 module.exports = db;
