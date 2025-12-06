@@ -9,10 +9,6 @@ router.post("/",
   JoiMiddleWare(entitySchema.registerEntityValidation, "body"),
   entityController.registerEntity
 );
-
-router.post("/transfer", 
-    JoiMiddleWare(entitySchema.transferEntityWalletValidation, "body"),
-    entityController.transferTransaction);
   
 
 module.exports = router;
