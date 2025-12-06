@@ -8,11 +8,13 @@ const twitterRoute = require("./twitterRoute");
 const userRoutes = require("./userRoutes");
 const entityRoute = require("./entityRoute");
 const entityWalletRoute = require("./entityWalletRoute");
+const entityTransaction = require("./entityTransaction");
 
 router.use("/arena-token", arenaTokenRoute);
 router.use("/twitter", twitterRoute);
 router.use("/user", userRoutes);
 router.use("/entities", entityRoute);
 router.use("/wallets", entityWalletRoute);
+router.use("/transactions", entityTransaction);
 
 module.exports = router;
