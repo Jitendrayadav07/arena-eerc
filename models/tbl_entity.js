@@ -16,6 +16,12 @@ module.exports = (sequelize, DataTypes) => {
         api_key: {
             type: DataTypes.STRING
         },
+        entity_type: {
+            type: DataTypes.STRING
+        },
+        base_token: {
+            type: DataTypes.STRING
+        },
     }, {
       freezeTableName: true,
       timestamps: true,
