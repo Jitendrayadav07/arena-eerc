@@ -10,6 +10,7 @@ const TRANSACTION_CONSTANTS_STATUS = {
     WALLET_NOT_FOUND: "Entity wallet not found",
     INVALID_PAYLOAD: "Name and email_id are required",
     NOT_FOUND: "TRANSACTION not found",
+    TX_QUEUED: "TRANSACTION_QUEUED",
   
     ERROR_OCCURRED: "An error occurred! Please try again"
   };
