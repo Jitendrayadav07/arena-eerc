@@ -4,8 +4,12 @@ const crypto = require("crypto");
 const axios = require("axios");
 const { ethers } = require("ethers");
 require("dotenv").config();
+const { generateUserToken } = require("../utils/jwtEntity");
 const ENTITY_CONSTANTS = require("../constants/entityConstants");
+const { createEntityEmailData } = require("../utils/createEntityEmailData");
 const sendEmail = require("../utils/sendEmail");
+const { JWT_EERCx402_SECRET } = require("../config/jwtTokenKey");
+const jwt = require("jsonwebtoken");
 
 // Helper function to encrypt private key
 const encryptPrivateKey = (privateKey) => {
@@ -81,7 +85,7 @@ const registerEntity = async (req, res) => {
     });
 
     // Create wallet for the entity
-    await db.tbl_wallets.create({
+    const entity_wallet = await db.tbl_wallets.create({
       entity_id: entity.entity_id,
       address: walletAddress,
       encrypted_private_key: encryptedPrivateKey,
@@ -89,13 +93,54 @@ const registerEntity = async (req, res) => {
       chain_id: process.env.CHAIN_ID?.toString() || "eip155:43113",
     });
 
+
+    let token = generateUserToken(entity, entity_wallet);
+
+    const emailData = createEntityEmailData(entity, token, entity_wallet.address);
+
+    await sendEmail(entity.email_id, emailData.subject, emailData.templateName, emailData);
+
+
     return res.status(200).send(Response.sendResponse(true, entity, ENTITY_CONSTANTS.ENTITY_CREATED, 200));
   } catch (error) {
     return res.status(500).send(Response.sendResponse(false, null, error.message, 500));
   }
 };
 
+const verifyEntity = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).send("Invalid verification link");
+    }
+
+    // Decode token
+    const decoded = jwt.verify(token, JWT_EERCx402_SECRET);
+    // Fetch entity
+    const entity = await db.tbl_entities.findOne({
+      where: { email_id: decoded.email_id, entity_id: decoded.entity_id }
+    });
+    if (!entity) return res.status(404).send("Entity not found");
+
+    // validate private key decryption
+    let decryptedPrivateKey;
+    try {
+      decryptedPrivateKey = decryptPrivateKey(decoded.encrypted_private_key);
+    } catch (err) {
+      console.log("Private key decryption failed:", err.message);
+      return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=invalid_wallet");
+    }
+
+    return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=success");
+
+  } catch (error) {
+    return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=failed");
+  }
+};
+
 module.exports = {
   registerEntity,
-  decryptPrivateKey
+  decryptPrivateKey,
+  verifyEntity
 }
