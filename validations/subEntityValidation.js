@@ -5,8 +5,6 @@ const registerEntitySchema = {
         email_id: Joi.string().required(),
         name: Joi.string().required(),
         role: Joi.string().required(),
-        allocation_type: Joi.string().optional(),
-        allocation: Joi.number().optional(),
     }),
 
     transferEntityWalletValidation: Joi.object().keys({

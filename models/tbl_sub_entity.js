@@ -16,14 +16,13 @@ module.exports = (sequelize, DataTypes) => {
         role: {
             type: DataTypes.STRING
         },
-        api_key: {
-            type: DataTypes.STRING
-        },
-        allocation_type: {
-            type: DataTypes.STRING
-        },
-        allocation: {
-            type: DataTypes.INTEGER
+        entity_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'tbl_entities',
+                key: 'entity_id'
+            }
         },
     }, {
         freezeTableName: true,

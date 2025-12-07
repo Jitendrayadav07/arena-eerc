@@ -50,18 +50,33 @@ const decryptPrivateKey = (encryptedData) => {
 
 const registerSubEntity = async (req, res) => {
     try {
-        const { email_id, name, role, allocation_type, allocation } = req.body;
+        const { email_id, name, role } = req.body;
+        const secretKey = req.headers['x-secret-key'] || req.headers['X-SECRET-KEY'];
+        console.log("secretKey", secretKey)
 
-        if (!email_id || !name || !allocation_type || !allocation || !role) {
+        if (!email_id || !name || !role) {
             return res.status(400).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.INVALID_PAYLOAD, 400));
         }
+
+        if (!secretKey) {
+            return res.status(400).send(Response.sendResponse(false, null, "x-secret-key header is required", 400));
+        }
+
+        // Get entity by api_key (x-secret-key)
+        const entity = await db.tbl_entities.findOne({ where: { api_key: secretKey } });
+        if (!entity) {
+            return res.status(401).send(Response.sendResponse(false, null, "Invalid Api Key", 401));
+        }
+
+        console.log("entity", entity)
+
+        const entity_id = entity.entity_id;
+        console.log("entity_id", entity_id)
 
         const existing = await db.tbl_sub_entity.findOne({ where: { email_id } });
         if (existing) {
             return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
         }
-
-        const api_key = crypto.randomBytes(32).toString("hex");
 
         // Generate a new EVM wallet
         const wallet = ethers.Wallet.createRandom();
@@ -76,9 +91,7 @@ const registerSubEntity = async (req, res) => {
             name,
             role,
             email_id,
-            api_key,
-            allocation_type,
-            allocation
+            entity_id
         });
 
         // Create wallet for the entity
