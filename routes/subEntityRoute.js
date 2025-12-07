@@ -10,5 +10,6 @@ router.post("/",
     subEntityController.registerSubEntity
 );
 
+router.get("/verify/:token", subEntityController.verifySubEntity);
 
 module.exports = router;

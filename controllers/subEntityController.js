@@ -6,6 +6,8 @@ const { ethers } = require("ethers");
 require("dotenv").config();
 const ENTITY_CONSTANTS = require("../constants/entityConstants");
 const sendEmail = require("../utils/sendEmail");
+const { generateSubEntityToken } = require("../utils/jwtSubEntity");
+const { createSubEntityEmailData } = require("../utils/createSubEntityEmailData");
 
 // Helper function to encrypt private key
 const encryptPrivateKey = (privateKey) => {
@@ -52,7 +54,6 @@ const registerSubEntity = async (req, res) => {
     try {
         const { email_id, name, role } = req.body;
         const secretKey = req.headers['x-secret-key'] || req.headers['X-SECRET-KEY'];
-        console.log("secretKey", secretKey)
 
         if (!email_id || !name || !role) {
             return res.status(400).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.INVALID_PAYLOAD, 400));
@@ -68,11 +69,7 @@ const registerSubEntity = async (req, res) => {
             return res.status(401).send(Response.sendResponse(false, null, "Invalid Api Key", 401));
         }
 
-        console.log("entity", entity)
-
         const entity_id = entity.entity_id;
-        console.log("entity_id", entity_id)
-
         const existing = await db.tbl_sub_entity.findOne({ where: { email_id } });
         if (existing) {
             return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
@@ -95,7 +92,7 @@ const registerSubEntity = async (req, res) => {
         });
 
         // Create wallet for the entity
-        await db.tbl_sub_entities_wallets.create({
+        const sub_entity_wallet = await db.tbl_sub_entities_wallets.create({
             sub_entity_id: sub_entity.sub_entity_id,
             address: walletAddress,
             encrypted_private_key: encryptedPrivateKey,
@@ -103,14 +100,50 @@ const registerSubEntity = async (req, res) => {
             chain_id: process.env.CHAIN_ID?.toString() || "eip155:43113",
         });
 
+        let token = generateSubEntityToken(sub_entity, sub_entity_wallet);
+
+        const emailData = createSubEntityEmailData(sub_entity, token, sub_entity_wallet.address);
+
+        await sendEmail(sub_entity.email_id, emailData.subject, emailData.templateName, emailData);
         return res.status(200).send(Response.sendResponse(true, sub_entity, ENTITY_CONSTANTS.ENTITY_CREATED, 200));
     } catch (error) {
-        console.log("err", error)
         return res.status(500).send(Response.sendResponse(false, null, error.message, 500));
+    }
+};
+
+const verifySubEntity = async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        if (!token) {
+            return res.status(400).send("Invalid verification link");
+        }
+
+        // Decode token
+        const decoded = jwt.verify(token, JWT_EERCx402_SECRET);
+        // Fetch entity
+        const sub_entity = await db.tbl_sub_entity.findOne({
+            where: { email_id: decoded.email_id, entity_id: decoded.entity_id }
+        });
+        if (!sub_entity) return res.status(404).send("Entity not found");
+
+        // validate private key decryption
+        let decryptedPrivateKey;
+        try {
+            decryptedPrivateKey = decryptPrivateKey(decoded.encrypted_private_key);
+        } catch (err) {
+            return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=invalid_wallet");
+        }
+
+        return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=success");
+
+    } catch (error) {
+        return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=failed");
     }
 };
 
 module.exports = {
     registerSubEntity,
-    decryptPrivateKey
+    decryptPrivateKey,
+    verifySubEntity
 }

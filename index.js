@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 const path = require('path')
 const dotenv = require('dotenv');
-const cron = require('./cron');
+// const cron = require('./cron');
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const passport = require("passport");
@@ -19,8 +19,8 @@ app.use(formData.parse());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
-    origin: "*",
-    credentials: true
+  origin: "*",
+  credentials: true
 }));
 
 // Serve static files
@@ -48,9 +48,9 @@ app.use("/v1", routes);
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log('Cron job started - will run every minute');
+  console.log(`Server is running on port ${PORT}`);
+  console.log('Cron job started - will run every minute');
 }).on('error', (err) => {
-    console.error('Server failed to start:', err);
-    process.exit(1);
+  console.error('Server failed to start:', err);
+  process.exit(1);
 });

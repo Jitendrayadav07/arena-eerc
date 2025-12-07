@@ -37,7 +37,7 @@ const createTokenHTMLTemplate = (token) => {
         </div>
     </div>
     `;
-    
+
     return htmlTemplate;
 };
 
@@ -45,7 +45,7 @@ const createTokenHTMLTemplate = (token) => {
 const postTokenToTwitter = async (token) => {
     try {
         const htmlTemplate = createTokenHTMLTemplate(token);
-        
+
         // Create tweet text (Twitter doesn't support HTML, so we'll create a text version)
         const tweetText = `🚀 New EERC Token Listing Alert!
 
@@ -64,13 +64,13 @@ const postTokenToTwitter = async (token) => {
         });
 
         console.log(`Successfully posted token ${token.name} to Twitter:`, tweet.data.id);
-        
+
         // Update the token as tweeted
         await db.tbl_arena_tokens.update(
             { is_tweeted: 1 },
             { where: { id: token.id } }
         );
-        
+
         return { success: true, tweetId: tweet.data.id, htmlTemplate };
     } catch (error) {
         console.error(`Error posting token ${token.name} to Twitter:`, error);
@@ -87,33 +87,33 @@ const tokenTweetTwitter = async () => {
                 is_tweeted: 0
             }
         });
-        
+
         console.log(`Found ${tokens.length} tokens to tweet`);
-        
+
         if (tokens.length === 0) {
             console.log("No new tokens to tweet");
             return;
         }
-        
+
         // Process each token
         for (const token of tokens) {
             console.log(`Processing token: ${token.name} (ID: ${token.id})`);
-            
+
             const result = await postTokenToTwitter(token);
-            
+
             if (result.success) {
                 console.log(`✅ Successfully posted ${token.name} to Twitter`);
                 console.log(`📄 HTML Template generated for ${token.name}`);
             } else {
                 console.error(`❌ Failed to post ${token.name}: ${result.error}`);
             }
-            
+
             // Add a small delay between tweets to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        
+
         console.log("Finished processing all tokens");
-        
+
     } catch (error) {
         console.error("Error in tokenTweetTwitter:", error);
     }

@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
             autoIncrement: true
         },
-        email_id : {
+        email_id: {
             type: DataTypes.STRING,
             unique: true
         },
@@ -23,10 +23,9 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING
         },
     }, {
-      freezeTableName: true,
-      timestamps: true,
+        freezeTableName: true,
+        timestamps: true,
     });
-  
+
     return Entity;
-  };
-  
+};
