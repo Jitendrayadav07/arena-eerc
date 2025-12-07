@@ -12,20 +12,10 @@ module.exports = (sequelize, DataTypes) => {
           },
           address: {
             type: DataTypes.STRING,
-            allowNull: true,
-          },
-          // identifier used when calling /v1/wallets/server
-          server_wallet_identifier: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            unique: true,
-          },
-          send_address: {
-            type: DataTypes.STRING,
             allowNull: false,
           },
-          transfer_server_wallet_address: {
-            type: DataTypes.STRING,
+          encrypted_private_key: {
+            type: DataTypes.TEXT,
             allowNull: false,
           },
           network: {
