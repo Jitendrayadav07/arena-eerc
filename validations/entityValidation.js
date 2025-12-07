@@ -2,7 +2,7 @@ const Joi = require("joi");
 
 const registerEntitySchema = {
   registerEntityValidation: Joi.object().keys({
-    email_id : Joi.string().required(),
+    email_id: Joi.string().required(),
     name: Joi.string().required(),
     entity_type: Joi.string().optional(),
     base_token: Joi.string().optional(),

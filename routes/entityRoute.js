@@ -9,6 +9,5 @@ router.post("/",
   JoiMiddleWare(entitySchema.registerEntityValidation, "body"),
   entityController.registerEntity
 );
-  
 
 module.exports = router;

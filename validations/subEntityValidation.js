@@ -1,0 +1,18 @@
+const Joi = require("joi");
+
+const registerEntitySchema = {
+    registerSubEntityValidation: Joi.object().keys({
+        email_id: Joi.string().required(),
+        name: Joi.string().required(),
+        role: Joi.string().required(),
+        allocation_type: Joi.string().optional(),
+        allocation: Joi.number().optional(),
+    }),
+
+    transferEntityWalletValidation: Joi.object().keys({
+        from_wallet_address: Joi.string().required(),
+        to_wallet_address: Joi.string().required(),
+        amount: Joi.number().positive().required(),
+    }),
+};
+module.exports = registerEntitySchema;
