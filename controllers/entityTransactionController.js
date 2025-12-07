@@ -10,7 +10,6 @@ const THIRDWEB_BASE_URL = process.env.THIRDWEB_BASE_URL || "https://api.thirdweb
 const sendFromEntityWallet = async (req, res) => {
     try {
       const { entity_id, to, amount } = req.body;
-      console.log("req.body",req.body)
 
       if (!entity_id || !to || !amount) {
         return res
@@ -21,7 +20,7 @@ const sendFromEntityWallet = async (req, res) => {
       }
   
       const entity = await db.tbl_entities.findOne({ where: { entity_id } });
-      console.log("entity",entity)
+
       if (!entity) {
         return res
           .status(404)
@@ -36,7 +35,6 @@ const sendFromEntityWallet = async (req, res) => {
       }
   
       const wallet = await db.tbl_wallets.findOne({ where: { entity_id } });
-      console.log("wallet",wallet)
       if (!wallet) {
         return res
           .status(404)
@@ -52,21 +50,22 @@ const sendFromEntityWallet = async (req, res) => {
   
       const chainId =
         process.env.CHAIN_ID?.toString() || wallet.chain_id || "43113";
-        console.log("chainId",chainId)
       // Convert human-readable AVAX amount to wei
       const valueWei = ethers.parseEther(amount.toString()).toString();
-      console.log("valueWei",valueWei)
+
       // Call thirdweb Transactions API
       const twResponse = await axios.post(
         `${THIRDWEB_BASE_URL}/transactions`,
         {
           chainId: Number(chainId), // or string, depending on docs; 43113 for Avalanche Fuji
           from: wallet.transfer_server_wallet_address, // important: use the company server wallet as sender
+          gasless: true,
           transactions: [
             {
               to,
               value: valueWei,
               data: "0x", // simple native value transfer
+              mode: "prepared"
             },
           ],
         },
@@ -77,7 +76,7 @@ const sendFromEntityWallet = async (req, res) => {
           },
         }
       );
-      console.log("twResponse",twResponse)
+   
       const data = twResponse.data;
       console.log("Thirdweb send transaction response:", data);
   
@@ -108,10 +107,6 @@ const sendFromEntityWallet = async (req, res) => {
           )
         );
     } catch (error) {
-      console.error(
-        "SendFromEntityWallet error:",
-        error.response?.data || error.message
-      );
       return res.status(500).send(
         Response.sendResponse(
           false,
