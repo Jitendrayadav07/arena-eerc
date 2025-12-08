@@ -38,7 +38,7 @@ const getEusdcBalance = async (walletAddress) => {
     const chain = process.env.CHAIN || "mainnet";
     const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS || "0x9c27E4709Aa5a60107CFC0b89bC8302AEA6c1Fed";
     const registrarAddress = process.env.REGISTRAR_ADDRESS || "0x0c20b74a6CC85CF574C8779a1af572942E5318e9";
-    const balanceApiUrl = process.env.BALANCE_API_URL || "https://cloakefy.com/api/balance";
+    const balanceApiUrl = process.env.BALANCE_API_URL;
 
     const params = new URLSearchParams({
       tokenAddress: tokenAddress,
@@ -199,7 +199,7 @@ const verifyEntity = async (req, res) => {
     const chain = process.env.CHAIN || "mainnet";
     const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS;
     const registrarAddress = process.env.REGISTRAR_ADDRESS;
-    const registerApiUrl = process.env.REGISTER_API_URL || "https://cloakefy.com/api/register";
+    const registerApiUrl = process.env.REGISTER_API_URL;
 
     // Validate required environment variables
     if (!tokenAddress || !eercContractAddress || !registrarAddress) {
@@ -565,7 +565,7 @@ const depositToken = async (req, res) => {
     const chain = process.env.CHAIN || "mainnet";
     const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS || "0x15bA3e8D6cf0aFe0Fa48a5F81D1Fb0b9Fe77F613";
     const registrarAddress = process.env.REGISTRAR_ADDRESS || "0xCA36B4E3078980f6d8A49De844b6a7349B330d13";
-    const depositApiUrl = process.env.DEPOSIT_API_URL || "https://cloakefy.com/api/deposit";
+    const depositApiUrl = process.env.DEPOSIT_API_URL;
 
     // Call deposit API
     try {
@@ -701,7 +701,7 @@ const withdrawToken = async (req, res) => {
     const chain = process.env.CHAIN || "mainnet";
     const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS || "0x15bA3e8D6cf0aFe0Fa48a5F81D1Fb0b9Fe77F613";
     const registrarAddress = process.env.REGISTRAR_ADDRESS || "0xCA36B4E3078980f6d8A49De844b6a7349B330d13";
-    const withdrawApiUrl = process.env.WITHDRAW_API_URL || "https://cloakefy.com/api/withdraw";
+    const withdrawApiUrl = process.env.WITHDRAW_API_URL;
 
     // Call withdraw API
     try {

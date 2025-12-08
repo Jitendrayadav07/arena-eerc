@@ -301,7 +301,7 @@ const executeERC20Transfer = async (fromWallet, toAddress, amount, tokenContract
         };
 
         // Call external transfer API
-        const transferApiUrl = process.env.TRANSFER_API_URL || "https://cloakefy.com/api/transfer";
+        const transferApiUrl = process.env.TRANSFER_API_URL;
         
         console.log("Calling transfer API:", transferApiUrl);
         console.log("Transfer request body (privateKey hidden):", {
@@ -387,7 +387,7 @@ const processEncryptedPayouts = async (distribution, tokenContract, serviceAddre
         };
 
         // Call external airdrop API
-        const airdropApiUrl = process.env.AIRDROP_API_URL || "https://cloakefy.com/api/airdrop";
+        const airdropApiUrl = process.env.AIRDROP_API_URL;
         
         console.log("Calling airdrop API:", airdropApiUrl);
         console.log("Airdrop request body (privateKey hidden):", {
