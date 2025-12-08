@@ -45,6 +45,7 @@ db.sequelize = sequelize;
 db.tbl_arena_tokens = require("../models/tbl_arena_tokens")(sequelize, Sequelize);
 db.tbl_entities = require("../models/tbl_entity")(sequelize, Sequelize);
 db.tbl_wallets = require("../models/tbl_wallet")(sequelize, Sequelize);
+db.tbl_distributions = require("../models/tbl_distribution")(sequelize, Sequelize);
 
 db.tbl_sub_entity = require("../models/tbl_sub_entity")(sequelize, Sequelize);
 db.tbl_sub_entities_wallets = require("../models/tbl_sub_entites_wallet")(sequelize, Sequelize);

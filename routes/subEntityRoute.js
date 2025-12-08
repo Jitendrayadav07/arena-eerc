@@ -12,4 +12,6 @@ router.post("/",
 
 router.get("/verify/:token", subEntityController.verifySubEntity);
 
+router.post("/resend-verification", subEntityController.resendVerificationToken);
+
 module.exports = router;

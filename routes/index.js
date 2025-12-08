@@ -11,6 +11,7 @@ const entityWalletRoute = require("./entityWalletRoute");
 const entityTransaction = require("./entityTransaction");
 const subEntityRoute = require("./subEntityRoute");
 const googleSuccess = require("./google_auth")
+const facilitatorRoute = require("./facilitatorRoute");
 
 router.use("/arena-token", arenaTokenRoute);
 router.use("/twitter", twitterRoute);
@@ -20,5 +21,6 @@ router.use("/wallets", entityWalletRoute);
 router.use("/transactions", entityTransaction);
 router.use("/sub-entities", subEntityRoute);
 router.use("/auth", googleSuccess);
+router.use("/facilitator", facilitatorRoute);
 
 module.exports = router;

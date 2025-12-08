@@ -132,15 +132,130 @@ const verifyEntity = async (req, res) => {
       return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=invalid_wallet");
     }
 
-    return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=success");
+    // Get parameters from environment
+    const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS;
+    const chain = process.env.CHAIN || "mainnet";
+    const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS;
+    const registrarAddress = process.env.REGISTRAR_ADDRESS;
+    const registerApiUrl = process.env.REGISTER_API_URL || "http://localhost:3000/api/register";
+
+    // Validate required environment variables
+    if (!tokenAddress || !eercContractAddress || !registrarAddress) {
+      console.error("Missing required environment variables for register API");
+      return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=config_error");
+    }
+
+    // Call register API
+    try {
+      const registerRequestBody = {
+        tokenAddress: tokenAddress,
+        chain: chain,
+        eercContractAddress: eercContractAddress,
+        registrarAddress: registrarAddress,
+        privateKey: decryptedPrivateKey
+      };
+
+      console.log("Calling register API:", registerApiUrl);
+      console.log("Register request body (privateKey hidden):", {
+        ...registerRequestBody,
+        privateKey: "***HIDDEN***"
+      });
+
+      const registerResponse = await axios.post(registerApiUrl, registerRequestBody, {
+        headers: {
+          "Content-Type": "application/json"
+        },
+        timeout: 300000 // 5 minutes timeout
+      });
+
+      if (registerResponse.status === 200 || registerResponse.status === 201) {
+        console.log("Register API call successful:", registerResponse.data);
+        return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=success");
+      } else {
+        console.error("Register API returned unexpected status:", registerResponse.status);
+        return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=register_failed");
+      }
+    } catch (registerError) {
+      console.error("Register API call failed:", registerError.response?.data || registerError.message);
+      return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=register_failed");
+    }
 
   } catch (error) {
+    console.error("Verify entity error:", error);
     return res.redirect(process.env.AFTER_VERIFIED_REDIRECT_URL + "?status=failed");
+  }
+};
+
+const resendVerificationToken = async (req, res) => {
+  try {
+    const { entity_id } = req.body;
+    const secretKey = req.headers['x-secret-key'] || req.headers['X-SECRET-KEY'];
+
+    // Validate x-secret-key header
+    if (!secretKey) {
+      return res.status(400).send(
+        Response.sendResponse(false, null, "x-secret-key header is required", 400)
+      );
+    }
+
+    // Validate entity_id
+    if (!entity_id) {
+      return res.status(400).send(
+        Response.sendResponse(false, null, "entity_id is required", 400)
+      );
+    }
+
+    // Get entity and validate API key
+    const entity = await db.tbl_entities.findOne({ where: { entity_id, api_key: secretKey } });
+    if (!entity) {
+      return res.status(401).send(
+        Response.sendResponse(false, null, "Invalid Api Key or Entity not found", 401)
+      );
+    }
+
+    // Get entity wallet
+    const entity_wallet = await db.tbl_wallets.findOne({
+      where: { entity_id }
+    });
+
+    if (!entity_wallet) {
+      return res.status(404).send(
+        Response.sendResponse(false, null, "Entity wallet not found", 404)
+      );
+    }
+
+    // Generate new verification token
+    const token = generateUserToken(entity, entity_wallet);
+
+    // Create email data
+    const emailData = createEntityEmailData(entity, token, entity_wallet.address);
+
+    // Send verification email
+    await sendEmail(entity.email_id, emailData.subject, emailData.templateName, emailData);
+
+    return res.status(200).send(
+      Response.sendResponse(
+        true,
+        {
+          entity_id: entity.entity_id,
+          email_id: entity.email_id,
+          message: "Verification token has been resent to your email"
+        },
+        "Verification token resent successfully",
+        200
+      )
+    );
+  } catch (error) {
+    console.error("Resend verification token error:", error);
+    return res.status(500).send(
+      Response.sendResponse(false, null, error.message, 500)
+    );
   }
 };
 
 module.exports = {
   registerEntity,
   decryptPrivateKey,
-  verifyEntity
+  verifyEntity,
+  resendVerificationToken
 }
