@@ -144,7 +144,7 @@ const verifySubEntity = async (req, res) => {
         const chain = process.env.CHAIN || "mainnet";
         const eercContractAddress = process.env.EERC_CONTRACT_ADDRESS;
         const registrarAddress = process.env.REGISTRAR_ADDRESS;
-        const registerApiUrl = process.env.REGISTER_API_URL || "http://localhost:3000/api/register";
+        const registerApiUrl = process.env.REGISTER_API_URL || "https://cloakefy.com/api/register";
 
         // Validate required environment variables
         if (!tokenAddress || !eercContractAddress || !registrarAddress) {
