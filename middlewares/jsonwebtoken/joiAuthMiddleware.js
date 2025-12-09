@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET } = require("../../config/jwtTokenKey");
+const { JWT_EERCx402_SECRET } = require("../../config/jwtTokenKey");
 const Response = require("../../classes/Response");
 const { Op, QueryTypes } = require("sequelize");
 const db = require("../../config/db.config")
@@ -14,7 +14,7 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).send(Response.sendResponse(false, null, 'A token is required for authentication',401));
   
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_EERCx402_SECRET);
     req.user = decoded;
   } catch (err) {
     return res.status(401).send(Response.sendResponse(false, null, 'Invalid Token',401));

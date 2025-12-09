@@ -3,15 +3,15 @@ const passport = require("passport");
 require("dotenv").config();
 const db = require("./config/db.config");
 
-const GOOGLE_CLIENT_USER_ID = process.env.GOOGLE_CLIENT_USER_ID;
-const GOOGLE_CLIENT_USER_SECRET = process.env.GOOGLE_CLIENT_USER_SECRET;
+const GOOGLE_CLIENT_USER_ID = '52967327911-k94egpn7s8jcs78vntu4kkfodmm4c3ap.apps.googleusercontent.com';
+const GOOGLE_CLIENT_USER_SECRET = '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';
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: GOOGLE_CLIENT_USER_ID,
       clientSecret: GOOGLE_CLIENT_USER_SECRET,
-      callbackURL: `${process.env.REDIRECT_URL}/v1/auth/google/callback`,
+      callbackURL: `http://localhost:8000/v1/auth/google/callback`,
     },
 
     async (accessToken, refreshToken, profile, done) => {
