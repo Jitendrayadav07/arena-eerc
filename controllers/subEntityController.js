@@ -564,11 +564,32 @@ const withdrawToken = async (req, res) => {
     }
 };
 
+const getSubEntityByEmail = async (req, res) => {
+    try {
+        const { email_id } = req.body;
+        if (!email_id) {
+            return res.status(400).send(Response.sendResponse(false, null, "email_id is required", 400));
+        }
+        const sub_entity = await db.tbl_sub_entity.findOne({ where: { email_id } });
+        if (!sub_entity) {
+            return res.status(404).send(Response.sendResponse(false, null, "Sub-entity not found", 404));
+        }
+        const sub_entity_wallet = await db.tbl_sub_entities_wallets.findOne({ where: { sub_entity_id: sub_entity.sub_entity_id } });
+        if (!sub_entity_wallet) {
+            return res.status(404).send(Response.sendResponse(false, null, "Sub-entity wallet not found", 404));
+        }
+        return res.status(200).send(Response.sendResponse(true, { sub_entity, sub_entity_wallet }, "Sub-entity fetched successfully", 200));
+    } catch (error) {
+        return res.status(500).send(Response.sendResponse(false, null, error.message, 500));  
+    }
+};
+
 module.exports = {
     registerSubEntity,
     decryptPrivateKey,
     verifySubEntity,
     resendVerificationToken,
     depositToken,
-    withdrawToken
+    withdrawToken,
+    getSubEntityByEmail
 }

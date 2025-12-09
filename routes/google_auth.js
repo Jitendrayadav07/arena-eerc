@@ -50,7 +50,7 @@ router.get(
           id: user_data.id,
           email: user_data.email,
           google_id: user_data.google_id,
-          role: role,
+          role: 'subentity',
         },
         JWT_EERCx402_SECRET,
         { expiresIn: "24h" }
