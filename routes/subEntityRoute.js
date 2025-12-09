@@ -18,6 +18,6 @@ router.post("/deposit", subEntityController.depositToken);
 
 router.post("/withdraw", subEntityController.withdrawToken);
 
-router.get("/get-sub-entity-by-email", subEntityController.getSubEntityByEmail);
+router.post("/get-sub-entity-by-email", subEntityController.getSubEntityByEmail);
 
 module.exports = router;

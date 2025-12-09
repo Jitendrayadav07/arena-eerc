@@ -124,7 +124,7 @@ const verifySubEntity = async (req, res) => {
 
         // Decode token
         const decoded = jwt.verify(token, JWT_EERCx402_SECRET);
-        
+
         // Fetch sub-entity
         const sub_entity = await db.tbl_sub_entity.findOne({
             where: { email_id: decoded.email_id, sub_entity_id: decoded.sub_entity_id }
@@ -222,8 +222,8 @@ const resendVerificationToken = async (req, res) => {
         }
 
         // Get parent entity and validate API key
-        const entity = await db.tbl_entities.findOne({ 
-            where: { entity_id: sub_entity.entity_id, api_key: secretKey } 
+        const entity = await db.tbl_entities.findOne({
+            where: { entity_id: sub_entity.entity_id, api_key: secretKey }
         });
         if (!entity) {
             return res.status(401).send(
@@ -307,8 +307,8 @@ const depositToken = async (req, res) => {
         }
 
         // Get parent entity and validate API key
-        const entity = await db.tbl_entities.findOne({ 
-            where: { entity_id: sub_entity.entity_id, api_key: secretKey } 
+        const entity = await db.tbl_entities.findOne({
+            where: { entity_id: sub_entity.entity_id, api_key: secretKey }
         });
         if (!entity) {
             return res.status(401).send(
@@ -454,8 +454,8 @@ const withdrawToken = async (req, res) => {
         }
 
         // Get parent entity and validate API key
-        const entity = await db.tbl_entities.findOne({ 
-            where: { entity_id: sub_entity.entity_id, api_key: secretKey } 
+        const entity = await db.tbl_entities.findOne({
+            where: { entity_id: sub_entity.entity_id, api_key: secretKey }
         });
         if (!entity) {
             return res.status(401).send(
@@ -575,7 +575,7 @@ const getSubEntityByEmail = async (req, res) => {
         if (!sub_entity) {
             return res.status(404).send(Response.sendResponse(false, null, "Sub-entity not found", 404));
         }
-        const sub_entity_wallet = await db.tbl_sub_entities_wallets.findOne({ 
+        const sub_entity_wallet = await db.tbl_sub_entities_wallets.findOne({
             where: { sub_entity_id: sub_entity.sub_entity_id },
             attributes: { exclude: ['encrypted_private_key'] }
         });
@@ -615,7 +615,7 @@ const getSubEntityByEmail = async (req, res) => {
 
         return res.status(200).send(Response.sendResponse(true, responseData, "Sub-entity fetched successfully", 200));
     } catch (error) {
-        return res.status(500).send(Response.sendResponse(false, null, error.message, 500));  
+        return res.status(500).send(Response.sendResponse(false, null, error.message, 500));
     }
 };
 
