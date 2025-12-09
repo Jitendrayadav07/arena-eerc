@@ -444,52 +444,6 @@ const resendVerificationToken = async (req, res) => {
   }
 };
 
-// const getAllEntities = async (req, res) => {
-//   try {
-//     const entities = await db.tbl_entities.findAll({
-//       order: [['createdAt', 'DESC']] // Order by creation date, newest first
-//     });
-//     console.log("entities", entities);
-//     // Get all wallets for the entities
-//     const entityIds = entities.map(entity => entity.entity_id);
-//     const wallets = await db.tbl_wallets.findAll({
-//       where: { entity_id: entityIds },
-//       attributes: ['entity_id', 'address', 'network', 'chain_id']
-//     });
-
-//     // Create a map of entity_id to wallet address
-//     const walletMap = {};
-//     wallets.forEach(wallet => {
-//       if (!walletMap[wallet.entity_id]) {
-//         walletMap[wallet.entity_id] = wallet.address;
-//       }
-//     });
-
-//     // Transform the data to include wallet_address at the entity level
-//     const entitiesWithWalletAddress = entities.map(entity => {
-//       const entityData = entity.toJSON();
-//       return {
-//         ...entityData,
-//         wallet_address: walletMap[entityData.entity_id] || null
-//       };
-//     });
-
-//     return res.status(200).send(
-//       Response.sendResponse(
-//         true,
-//         entitiesWithWalletAddress,
-//         "Entities retrieved successfully",
-//         200
-//       )
-//     );
-//   } catch (error) {
-//     console.error("Get all entities error:", error);
-//     return res.status(500).send(
-//       Response.sendResponse(false, null, error.message, 500)
-//     );
-//   }
-// };
-
 const getAllEntities = async (req, res) => {
   try {
     const { email_id } = req.body;
@@ -500,37 +454,40 @@ const getAllEntities = async (req, res) => {
       );
     }
 
-    // Get only entities for that email_id
+    // Get all entities for this email_id (findAll to match original structure)
     const entities = await db.tbl_entities.findAll({
-      where: { email_id: email_id },
-      attributes: ['entity_id', 'name', 'email_id', 'entity_type', 'base_token'],
-      order: [['createdAt', 'DESC']]
+      where: { email_id },
+      order: [['createdAt', 'DESC']],
+      attributes: ['entity_id', 'name', 'email_id', 'entity_type', 'base_token', 'createdAt']
     });
 
-    if (entities.length === 0) {
+    if (!entities || entities.length === 0) {
       return res.status(200).send(
         Response.sendResponse(true, [], "No entities found for this email", 200)
       );
     }
 
-    const entityIds = entities.map(entity => entity.entity_id);
+    // Extract entity_ids
+    const entityIds = entities.map(ent => ent.entity_id);
 
-    // Get wallet data for only this entity
+    // Fetch wallets for these entity_ids
     const wallets = await db.tbl_wallets.findAll({
       where: { entity_id: entityIds },
       attributes: ['entity_id', 'address', 'network', 'chain_id']
     });
 
+    // Map entity_id → wallet
     const walletMap = {};
     wallets.forEach(wallet => {
       walletMap[wallet.entity_id] = wallet.address;
     });
 
+    // Merge wallet address into entity object (same as original)
     const entitiesWithWalletAddress = entities.map(entity => {
-      const data = entity.toJSON();
+      const entityData = entity.toJSON();
       return {
-        ...data,
-        wallet_address: walletMap[data.entity_id] || null
+        ...entityData,
+        wallet_address: walletMap[entity.entity_id] || null
       };
     });
 

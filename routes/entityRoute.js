@@ -18,7 +18,7 @@ router.post("/deposit", entityController.depositToken);
 
 router.post("/withdraw", entityController.withdrawToken);
 
-router.get("/", entityController.getAllEntities);
+router.post("/get-entity", entityController.getAllEntities);
 
 router.get("/:entity_id", entityController.getEntityById);
 
