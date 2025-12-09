@@ -14,4 +14,8 @@ router.get("/verify/:token", subEntityController.verifySubEntity);
 
 router.post("/resend-verification", subEntityController.resendVerificationToken);
 
+router.post("/deposit", subEntityController.depositToken);
+
+router.post("/withdraw", subEntityController.withdrawToken);
+
 module.exports = router;

@@ -32,7 +32,7 @@ const getAvaxBalance = async (walletAddress) => {
 };
 
 // Helper function to get eUSDC balance from API
-const getEusdcBalance = async (walletAddress) => {
+const getEusdcBalance = async (walletAddress, privateKey = null) => {
   try {
     const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS || "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
     const chain = process.env.CHAIN || "mainnet";
@@ -40,6 +40,7 @@ const getEusdcBalance = async (walletAddress) => {
     const registrarAddress = process.env.REGISTRAR_ADDRESS || "0x0c20b74a6CC85CF574C8779a1af572942E5318e9";
     const balanceApiUrl = process.env.BALANCE_API_URL;
 
+    // Build query parameters (always use GET request)
     const params = new URLSearchParams({
       tokenAddress: tokenAddress,
       accountAddress: walletAddress,
@@ -48,17 +49,145 @@ const getEusdcBalance = async (walletAddress) => {
       registrarAddress: registrarAddress
     });
 
+    // Add privateKey to query params if provided
+    if (privateKey) {
+      params.append('privateKey', privateKey);
+    }
+
     const response = await axios.get(`${balanceApiUrl}?${params.toString()}`, {
       timeout: 30000 // 30 seconds timeout
     });
 
-    // Return only the required fields
+    // Handle encryptedBalance - it might be an object or a string
+    // If it's an object, we can't decrypt it for other accounts, so use "0"
+    let encryptedBalance = "0";
+    if (response.data.encryptedBalance) {
+      if (typeof response.data.encryptedBalance === 'string') {
+        encryptedBalance = response.data.encryptedBalance;
+      } else if (typeof response.data.encryptedBalance === 'object') {
+        // If it's an object, we can't decrypt encrypted balance for other accounts
+        // Use "0" as the balance value
+        encryptedBalance = "0";
+      }
+    }
+
+    // Format tokenBalance properly from tokenBalanceWei (eUSDC/USDC has 6 decimals)
+    let tokenBalance = "0";
+    const tokenBalanceWei = response.data.tokenBalanceWei || "0";
+    if (tokenBalanceWei && tokenBalanceWei !== "0") {
+      try {
+        // Convert from wei (USDC/eUSDC uses 6 decimals)
+        const balanceWeiBigInt = BigInt(tokenBalanceWei);
+        const decimals = 6; // USDC/eUSDC uses 6 decimals
+        const divisor = BigInt(10 ** decimals);
+        const wholePart = balanceWeiBigInt / divisor;
+        const fractionalPart = balanceWeiBigInt % divisor;
+        
+        if (fractionalPart === BigInt(0)) {
+          tokenBalance = wholePart.toString();
+        } else {
+          // Format fractional part with leading zeros if needed
+          const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+          // Remove trailing zeros
+          const fractionalTrimmed = fractionalStr.replace(/0+$/, '');
+          tokenBalance = fractionalTrimmed ? `${wholePart}.${fractionalTrimmed}` : wholePart.toString();
+        }
+      } catch (e) {
+        // Fallback to API response if conversion fails
+        tokenBalance = String(response.data.tokenBalance || "0");
+      }
+    } else if (response.data.tokenBalance) {
+      // Fallback to API response if tokenBalanceWei is not available
+      tokenBalance = String(response.data.tokenBalance);
+    }
+
+    // Format encryptedBalance properly from encryptedBalanceWei (eUSDC/USDC has 6 decimals)
+    let formattedEncryptedBalance = "0";
+    const encryptedBalanceWei = response.data.encryptedBalanceWei || "0";
+    
+    // First, try to get encryptedBalance from response data (might be a string or object)
+    let encryptedBalanceValue = encryptedBalance;
+    if (response.data.encryptedBalance && typeof response.data.encryptedBalance === 'string') {
+      encryptedBalanceValue = response.data.encryptedBalance;
+    }
+    
+    // Priority: Use encryptedBalanceWei if available (most accurate)
+    if (encryptedBalanceWei && encryptedBalanceWei !== "0") {
+      try {
+        const encryptedWeiBigInt = BigInt(encryptedBalanceWei);
+        // encryptedBalanceWei is in 18 decimals (like ETH/wei)
+        // Convert to readable format with 8 decimal places
+        const weiDecimals = 18;
+        const displayDecimals = 8; // Display with 8 decimal places
+        const weiDivisor = BigInt(10 ** weiDecimals);
+        
+        // Convert from 18 decimals to decimal number
+        const wholePart = encryptedWeiBigInt / weiDivisor;
+        const remainder = encryptedWeiBigInt % weiDivisor;
+        
+        // Format with 8 decimal places
+        if (remainder === BigInt(0)) {
+          formattedEncryptedBalance = wholePart.toString() + ".00000000";
+        } else {
+          // Convert remainder to 8 decimal places
+          // Multiply remainder by 10^8 and divide by 10^18 to get 8 decimal places
+          const fractionalMultiplier = BigInt(10 ** displayDecimals);
+          const fractionalPart = (remainder * fractionalMultiplier) / weiDivisor;
+          const fractionalStr = fractionalPart.toString().padStart(displayDecimals, '0');
+          formattedEncryptedBalance = `${wholePart}.${fractionalStr}`;
+        }
+      } catch (e) {
+        // Fallback: try to format from encryptedBalance string
+        try {
+          if (encryptedBalanceValue && encryptedBalanceValue !== "0") {
+            const encryptedBigInt = BigInt(encryptedBalanceValue);
+            const decimals = 6;
+            const divisor = BigInt(10 ** decimals);
+            const wholePart = encryptedBigInt / divisor;
+            const fractionalPart = encryptedBigInt % divisor;
+            
+            if (fractionalPart === BigInt(0)) {
+              formattedEncryptedBalance = wholePart.toString() + ".000000";
+            } else {
+              const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+              formattedEncryptedBalance = `${wholePart}.${fractionalStr}`;
+            }
+          } else {
+            formattedEncryptedBalance = encryptedBalanceValue;
+          }
+        } catch (e2) {
+          formattedEncryptedBalance = encryptedBalanceValue;
+        }
+      }
+    } else if (encryptedBalanceValue && encryptedBalanceValue !== "0") {
+      // If no encryptedBalanceWei but we have encryptedBalance string, format it
+      try {
+        const encryptedBigInt = BigInt(encryptedBalanceValue);
+        const decimals = 6;
+        const divisor = BigInt(10 ** decimals);
+        const wholePart = encryptedBigInt / divisor;
+        const fractionalPart = encryptedBigInt % divisor;
+        
+        if (fractionalPart === BigInt(0)) {
+          formattedEncryptedBalance = wholePart.toString() + ".000000";
+        } else {
+          const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+          formattedEncryptedBalance = `${wholePart}.${fractionalStr}`;
+        }
+      } catch (e) {
+        formattedEncryptedBalance = encryptedBalanceValue;
+      }
+    } else {
+      formattedEncryptedBalance = encryptedBalanceValue;
+    }
+
+    // Return only the required fields in proper format (all as strings to match AVAX format)
     return {
-      tokenBalance: response.data.tokenBalance || "0",
-      tokenBalanceWei: response.data.tokenBalanceWei || "0",
-      encryptedBalance: response.data.encryptedBalance || "0",
-      encryptedBalanceWei: response.data.encryptedBalanceWei || "0",
-      isRegistered: response.data.isRegistered || false
+      tokenBalance: tokenBalance,
+      tokenBalanceWei: String(tokenBalanceWei),
+      encryptedBalance: formattedEncryptedBalance,
+      encryptedBalanceWei: String(encryptedBalanceWei),
+      isRegistered: Boolean(response.data.isRegistered || false)
     };
   } catch (error) {
     console.error(`Error fetching eUSDC balance for ${walletAddress}:`, error.response?.data || error.message);
@@ -407,9 +536,23 @@ const getEntityById = async (req, res) => {
     // Get balances for entity wallet
     let entityWalletBalances = null;
     if (wallet && wallet.address) {
+      // Decrypt private key for entity wallet
+      let entityPrivateKey = null;
+      try {
+        const entityWalletWithKey = await db.tbl_wallets.findOne({
+          where: { entity_id },
+          attributes: ['encrypted_private_key']
+        });
+        if (entityWalletWithKey && entityWalletWithKey.encrypted_private_key) {
+          entityPrivateKey = decryptPrivateKey(entityWalletWithKey.encrypted_private_key);
+        }
+      } catch (err) {
+        console.log("Failed to decrypt entity private key:", err.message);
+      }
+
       const [avaxBalance, eusdcBalance] = await Promise.all([
         getAvaxBalance(wallet.address),
-        getEusdcBalance(wallet.address)
+        getEusdcBalance(wallet.address, entityPrivateKey)
       ]);
       entityWalletBalances = {
         avax: avaxBalance,
@@ -425,9 +568,23 @@ const getEntityById = async (req, res) => {
 
     // Get balances for all sub entity wallets
     const subEntityWalletBalancesPromises = subEntityWallets.map(async (subWallet) => {
+      // Decrypt private key for sub-entity wallet
+      let subEntityPrivateKey = null;
+      try {
+        const subEntityWalletWithKey = await db.tbl_sub_entities_wallets.findOne({
+          where: { sub_entity_id: subWallet.sub_entity_id },
+          attributes: ['encrypted_private_key']
+        });
+        if (subEntityWalletWithKey && subEntityWalletWithKey.encrypted_private_key) {
+          subEntityPrivateKey = decryptPrivateKey(subEntityWalletWithKey.encrypted_private_key);
+        }
+      } catch (err) {
+        console.log(`Failed to decrypt sub-entity ${subWallet.sub_entity_id} private key:`, err.message);
+      }
+
       const [avaxBalance, eusdcBalance] = await Promise.all([
         getAvaxBalance(subWallet.address),
-        getEusdcBalance(subWallet.address)
+        getEusdcBalance(subWallet.address, subEntityPrivateKey)
       ]);
       return {
         wallet_id: subWallet.wallet_id,
