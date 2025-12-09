@@ -70,7 +70,7 @@ router.get(
       );
 
       return res.redirect(
-        `http://localhost:8080/platform/login?token=${token}`
+        `https://x402.cloakefy.com/platform/login?token=${token}`
       );
     } catch (error) {
       console.error("Error during Google callback:", error);
