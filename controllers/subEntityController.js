@@ -10,6 +10,7 @@ const { generateSubEntityToken } = require("../utils/jwtSubEntity");
 const { createSubEntityEmailData } = require("../utils/createSubEntityEmailData");
 const { JWT_EERCx402_SECRET } = require("../config/jwtTokenKey");
 const jwt = require("jsonwebtoken");
+const { getAvaxBalance, getEusdcBalance } = require("./entityController");
 
 // Helper function to encrypt private key
 const encryptPrivateKey = (privateKey) => {
@@ -574,11 +575,45 @@ const getSubEntityByEmail = async (req, res) => {
         if (!sub_entity) {
             return res.status(404).send(Response.sendResponse(false, null, "Sub-entity not found", 404));
         }
-        const sub_entity_wallet = await db.tbl_sub_entities_wallets.findOne({ where: { sub_entity_id: sub_entity.sub_entity_id } });
+        const sub_entity_wallet = await db.tbl_sub_entities_wallets.findOne({ 
+            where: { sub_entity_id: sub_entity.sub_entity_id },
+            attributes: { exclude: ['encrypted_private_key'] }
+        });
         if (!sub_entity_wallet) {
             return res.status(404).send(Response.sendResponse(false, null, "Sub-entity wallet not found", 404));
         }
-        return res.status(200).send(Response.sendResponse(true, { sub_entity, sub_entity_wallet }, "Sub-entity fetched successfully", 200));
+
+        // Decrypt private key for balance calculation
+        let subEntityPrivateKey = null;
+        try {
+            const subEntityWalletWithKey = await db.tbl_sub_entities_wallets.findOne({
+                where: { sub_entity_id: sub_entity.sub_entity_id },
+                attributes: ['encrypted_private_key']
+            });
+            if (subEntityWalletWithKey && subEntityWalletWithKey.encrypted_private_key) {
+                subEntityPrivateKey = decryptPrivateKey(subEntityWalletWithKey.encrypted_private_key);
+            }
+        } catch (err) {
+            console.log(`Failed to decrypt sub-entity ${sub_entity.sub_entity_id} private key:`, err.message);
+        }
+
+        // Get balances
+        const [avaxBalance, eusdcBalance] = await Promise.all([
+            getAvaxBalance(sub_entity_wallet.address),
+            getEusdcBalance(sub_entity_wallet.address, subEntityPrivateKey)
+        ]);
+
+        // Prepare response with balances
+        const responseData = {
+            sub_entity,
+            sub_entity_wallet,
+            balances: {
+                avax: avaxBalance,
+                eusdc: eusdcBalance
+            }
+        };
+
+        return res.status(200).send(Response.sendResponse(true, responseData, "Sub-entity fetched successfully", 200));
     } catch (error) {
         return res.status(500).send(Response.sendResponse(false, null, error.message, 500));  
     }

@@ -937,5 +937,7 @@ module.exports = {
   getAllEntities,
   getEntityById,
   depositToken,
-  withdrawToken
+  withdrawToken,
+  getAvaxBalance,
+  getEusdcBalance
 }
