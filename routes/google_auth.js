@@ -56,12 +56,13 @@ router.get(
         email: user_data.email,
         google_id: user_data.google_id,
         role: role,
+        api_key: api_key
       };
 
-      // Add api_key to payload if it exists
-      if (api_key) {
-        tokenPayload.api_key = api_key;
-      }
+      // // Add api_key to payload if it exists
+      // if (api_key) {
+      //   tokenPayload.api_key = api_key;
+      // }
 
       const token = jwt.sign(
         tokenPayload,
