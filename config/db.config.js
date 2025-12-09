@@ -49,5 +49,6 @@ db.tbl_distributions = require("../models/tbl_distribution")(sequelize, Sequeliz
 
 db.tbl_sub_entity = require("../models/tbl_sub_entity")(sequelize, Sequelize);
 db.tbl_sub_entities_wallets = require("../models/tbl_sub_entites_wallet")(sequelize, Sequelize);
+db.tbl_user_google_login = require("../models/tbl_user_google_login")(sequelize, Sequelize);
 
 module.exports = db;
