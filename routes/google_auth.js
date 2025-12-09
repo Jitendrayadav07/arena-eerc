@@ -23,40 +23,51 @@ router.get(
         console.log("User undefined!");
         return res.status(500).json({ message: "User undefined" });
       }
-      // Check if email exists in entity or subentity table to assign role
-      let role = "entity"; // Default role
-      
-      // Check if email exists in entity table
+
+      let role = "entity"; 
+      let api_key = null;
+  
       const entity = await db.tbl_entities.findOne({
         where: { email_id: user_data.email }
       });
       
       if (entity) {
         role = "entity";
+        api_key = entity.api_key;
       } else {
-        // Check if email exists in subentity table
         const subEntity = await db.tbl_sub_entity.findOne({
           where: { email_id: user_data.email }
         });
         
         if (subEntity) {
           role = "subentity";
+          // For subentity, always use the parent entity's api_key
+          const parentEntity = await db.tbl_entities.findOne({
+            where: { entity_id: subEntity.entity_id }
+          });
+          if (parentEntity) {
+            api_key = parentEntity.api_key;
+          }
         }
-        // If neither exists, role remains "entity" (default)
+      }
+      
+      const tokenPayload = {
+        id: user_data.id,
+        email: user_data.email,
+        google_id: user_data.google_id,
+        role: role,
+      };
+      
+      // Add api_key to payload if it exists
+      if (api_key) {
+        tokenPayload.api_key = api_key;
       }
       
       const token = jwt.sign(
-        {
-          id: user_data.id,
-          email: user_data.email,
-          google_id: user_data.google_id,
-          role: 'subentity',
-        },
+        tokenPayload,
         JWT_EERCx402_SECRET,
         { expiresIn: "24h" }
       );
-
-      console.log("Generated Token:", token);
 
       return res.redirect(
         `http://localhost:8080/platform/login?token=${token}`
