@@ -82,7 +82,7 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
         const divisor = BigInt(10 ** decimals);
         const wholePart = balanceWeiBigInt / divisor;
         const fractionalPart = balanceWeiBigInt % divisor;
-        
+
         if (fractionalPart === BigInt(0)) {
           tokenBalance = wholePart.toString();
         } else {
@@ -104,13 +104,13 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
     // Format encryptedBalance properly from encryptedBalanceWei (eUSDC/USDC has 6 decimals)
     let formattedEncryptedBalance = "0";
     const encryptedBalanceWei = response.data.encryptedBalanceWei || "0";
-    
+
     // First, try to get encryptedBalance from response data (might be a string or object)
     let encryptedBalanceValue = encryptedBalance;
     if (response.data.encryptedBalance && typeof response.data.encryptedBalance === 'string') {
       encryptedBalanceValue = response.data.encryptedBalance;
     }
-    
+
     // Priority: Use encryptedBalanceWei if available (most accurate)
     if (encryptedBalanceWei && encryptedBalanceWei !== "0") {
       try {
@@ -120,11 +120,11 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
         const weiDecimals = 18;
         const displayDecimals = 8; // Display with 8 decimal places
         const weiDivisor = BigInt(10 ** weiDecimals);
-        
+
         // Convert from 18 decimals to decimal number
         const wholePart = encryptedWeiBigInt / weiDivisor;
         const remainder = encryptedWeiBigInt % weiDivisor;
-        
+
         // Format with 8 decimal places
         if (remainder === BigInt(0)) {
           formattedEncryptedBalance = wholePart.toString() + ".00000000";
@@ -145,7 +145,7 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
             const divisor = BigInt(10 ** decimals);
             const wholePart = encryptedBigInt / divisor;
             const fractionalPart = encryptedBigInt % divisor;
-            
+
             if (fractionalPart === BigInt(0)) {
               formattedEncryptedBalance = wholePart.toString() + ".000000";
             } else {
@@ -167,7 +167,7 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
         const divisor = BigInt(10 ** decimals);
         const wholePart = encryptedBigInt / divisor;
         const fractionalPart = encryptedBigInt % divisor;
-        
+
         if (fractionalPart === BigInt(0)) {
           formattedEncryptedBalance = wholePart.toString() + ".000000";
         } else {
@@ -444,33 +444,93 @@ const resendVerificationToken = async (req, res) => {
   }
 };
 
+// const getAllEntities = async (req, res) => {
+//   try {
+//     const entities = await db.tbl_entities.findAll({
+//       order: [['createdAt', 'DESC']] // Order by creation date, newest first
+//     });
+//     console.log("entities", entities);
+//     // Get all wallets for the entities
+//     const entityIds = entities.map(entity => entity.entity_id);
+//     const wallets = await db.tbl_wallets.findAll({
+//       where: { entity_id: entityIds },
+//       attributes: ['entity_id', 'address', 'network', 'chain_id']
+//     });
+
+//     // Create a map of entity_id to wallet address
+//     const walletMap = {};
+//     wallets.forEach(wallet => {
+//       if (!walletMap[wallet.entity_id]) {
+//         walletMap[wallet.entity_id] = wallet.address;
+//       }
+//     });
+
+//     // Transform the data to include wallet_address at the entity level
+//     const entitiesWithWalletAddress = entities.map(entity => {
+//       const entityData = entity.toJSON();
+//       return {
+//         ...entityData,
+//         wallet_address: walletMap[entityData.entity_id] || null
+//       };
+//     });
+
+//     return res.status(200).send(
+//       Response.sendResponse(
+//         true,
+//         entitiesWithWalletAddress,
+//         "Entities retrieved successfully",
+//         200
+//       )
+//     );
+//   } catch (error) {
+//     console.error("Get all entities error:", error);
+//     return res.status(500).send(
+//       Response.sendResponse(false, null, error.message, 500)
+//     );
+//   }
+// };
+
 const getAllEntities = async (req, res) => {
   try {
+    const { email_id } = req.body;
+
+    if (!email_id) {
+      return res.status(400).send(
+        Response.sendResponse(false, null, "email_id is required", 400)
+      );
+    }
+
+    // Get only entities for that email_id
     const entities = await db.tbl_entities.findAll({
-      order: [['createdAt', 'DESC']] // Order by creation date, newest first
+      where: { email_id: email_id },
+      attributes: ['entity_id', 'name', 'email_id', 'entity_type', 'base_token'],
+      order: [['createdAt', 'DESC']]
     });
 
-    // Get all wallets for the entities
+    if (entities.length === 0) {
+      return res.status(200).send(
+        Response.sendResponse(true, [], "No entities found for this email", 200)
+      );
+    }
+
     const entityIds = entities.map(entity => entity.entity_id);
+
+    // Get wallet data for only this entity
     const wallets = await db.tbl_wallets.findAll({
       where: { entity_id: entityIds },
       attributes: ['entity_id', 'address', 'network', 'chain_id']
     });
 
-    // Create a map of entity_id to wallet address
     const walletMap = {};
     wallets.forEach(wallet => {
-      if (!walletMap[wallet.entity_id]) {
-        walletMap[wallet.entity_id] = wallet.address;
-      }
+      walletMap[wallet.entity_id] = wallet.address;
     });
 
-    // Transform the data to include wallet_address at the entity level
     const entitiesWithWalletAddress = entities.map(entity => {
-      const entityData = entity.toJSON();
+      const data = entity.toJSON();
       return {
-        ...entityData,
-        wallet_address: walletMap[entityData.entity_id] || null
+        ...data,
+        wallet_address: walletMap[data.entity_id] || null
       };
     });
 
@@ -489,6 +549,7 @@ const getAllEntities = async (req, res) => {
     );
   }
 };
+
 
 const getEntityById = async (req, res) => {
   try {
@@ -526,11 +587,11 @@ const getEntityById = async (req, res) => {
     const subEntityIds = subEntities.map(subEntity => subEntity.sub_entity_id);
 
     // Get sub entity wallets (exclude encrypted_private_key)
-    const subEntityWallets = subEntityIds.length > 0 
+    const subEntityWallets = subEntityIds.length > 0
       ? await db.tbl_sub_entities_wallets.findAll({
-          where: { sub_entity_id: subEntityIds },
-          attributes: { exclude: ['encrypted_private_key'] }
-        })
+        where: { sub_entity_id: subEntityIds },
+        attributes: { exclude: ['encrypted_private_key'] }
+      })
       : [];
 
     // Get balances for entity wallet
@@ -608,7 +669,7 @@ const getEntityById = async (req, res) => {
     const subEntitiesWithWallets = subEntities.map(subEntity => {
       const subEntityData = subEntity.toJSON();
       const subEntityWallet = subEntityWalletMap[subEntityData.sub_entity_id];
-      
+
       if (subEntityWallet) {
         const walletData = subEntityWallet.toJSON();
         return {

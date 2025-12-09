@@ -24,13 +24,13 @@ router.get(
         return res.status(500).json({ message: "User undefined" });
       }
 
-      let role = "entity"; 
+      let role = "entity";
       let api_key = null;
-  
+
       const entity = await db.tbl_entities.findOne({
         where: { email_id: user_data.email }
       });
-      
+
       if (entity) {
         role = "entity";
         api_key = entity.api_key;
@@ -38,7 +38,7 @@ router.get(
         const subEntity = await db.tbl_sub_entity.findOne({
           where: { email_id: user_data.email }
         });
-        
+
         if (subEntity) {
           role = "subentity";
           // For subentity, always use the parent entity's api_key
@@ -50,19 +50,19 @@ router.get(
           }
         }
       }
-      
+
       const tokenPayload = {
         id: user_data.id,
         email: user_data.email,
         google_id: user_data.google_id,
         role: role,
       };
-      
+
       // Add api_key to payload if it exists
       if (api_key) {
         tokenPayload.api_key = api_key;
       }
-      
+
       const token = jwt.sign(
         tokenPayload,
         JWT_EERCx402_SECRET,
