@@ -256,6 +256,11 @@ const registerEntity = async (req, res) => {
       return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
     }
 
+    const existingSubEntity = await db.tbl_sub_entity.findOne({ where: { email_id } });
+    if (existingSubEntity) {
+      return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
+    }
+
     const api_key = crypto.randomBytes(32).toString("hex");
 
     // Generate a new EVM wallet

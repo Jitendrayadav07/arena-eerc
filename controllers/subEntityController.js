@@ -78,6 +78,11 @@ const registerSubEntity = async (req, res) => {
             return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
         }
 
+        const existingEntity = await db.tbl_entities.findOne({ where: { email_id } });
+        if (existingEntity) {
+            return res.status(409).send(Response.sendResponse(false, null, ENTITY_CONSTANTS.ENTITY_ALREADY_EXISTS, 409));
+        }
+
         // Generate a new EVM wallet
         const wallet = ethers.Wallet.createRandom();
         const walletAddress = wallet.address;
