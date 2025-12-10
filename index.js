@@ -15,6 +15,12 @@ const passportSetup = require('./passport')// Ensure passport strategies are loa
 dotenv.config();
 const routes = require("./routes");
 
+app.use((req, res, next) => {
+  req.setTimeout(300000);   // 5 mins
+  res.setTimeout(300000);
+  next();
+});
+
 app.use(formData.parse());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -47,10 +53,8 @@ app.use("/v1", routes);
 
 const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log('Cron job started - will run every minute');
-}).on('error', (err) => {
-  console.error('Server failed to start:', err);
-  process.exit(1);
+// ---- CHANGE THIS ----
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
+server.setTimeout(300000);
