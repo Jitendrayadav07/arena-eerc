@@ -531,60 +531,60 @@ const getEntityBalance = async (req, res) => {
 const getBalanceByWalletAddress = async (req, res) => {
   try {
     const { wallet_address } = req.query;
-
     if (!wallet_address) {
-      return res.status(400).send(
-        Response.sendResponse(false, null, TRANSACTION.INVALID_PAYLOAD, 400)
-      );
+      return res.status(400).send(Response.sendResponse(false, null, TRANSACTION.INVALID_PAYLOAD, 400));
     }
 
-    // Get entity wallet details (exclude encrypted_private_key)
-    const wallet = await db.tbl_wallets.findOne({
-      where: { address: wallet_address },
-      attributes: { exclude: ['encrypted_private_key'] }
-    });
+    // 1. Try entity wallet first
+    let wallet = await db.tbl_wallets.findOne({ where: { address: wallet_address } });
+    let isEntity = true;
 
-    let entityWalletBalances = null;
-    if (wallet && wallet.address) {
-      // Decrypt private key for entity wallet
-      let entityPrivateKey = null;
-      try {
-        const entityWalletWithKey = await db.tbl_wallets.findOne({
-          where: { address: wallet_address },
-          attributes: ['encrypted_private_key']
-        });
-        if (entityWalletWithKey && entityWalletWithKey.encrypted_private_key) {
-          entityPrivateKey = decryptPrivateKey(entityWalletWithKey.encrypted_private_key);
-        }
-      } catch (err) {
-        console.log("Failed to decrypt entity private key:", err.message);
-      }
-
-      const [avaxBalance, eusdcBalance] = await Promise.all([
-        getAvaxBalance(wallet.address),
-        getEusdcBalance(wallet.address, entityPrivateKey)
-      ]);
-      entityWalletBalances = {
-        avax: avaxBalance,
-        eusdc: eusdcBalance
-      };
+    // 2. If not found, try sub-entity wallet
+    if (!wallet) {
+      wallet = await db.tbl_sub_entities_wallets.findOne({ where: { address: wallet_address } });
+      isEntity = false;
     }
 
-    return res.status(200).send(Response.sendResponse(true,
-      {
-        entityWalletBalances
-      },
-      "SUCCESS",
-      200
-    )
+    // 3. Not found anywhere
+    if (!wallet) {
+      return res.status(404).send(Response.sendResponse(false, null, "WALLET_NOT_FOUND", 404));
+    }
+
+    const { encrypted_private_key, ...walletData } = wallet.dataValues;
+    let privateKey = null;
+
+    try {
+      privateKey = encrypted_private_key ? decryptPrivateKey(encrypted_private_key) : null;
+    } catch (err) {
+      console.log("Failed to decrypt private key:", err.message);
+    }
+
+    const [avaxBalance, eusdcBalance] = await Promise.all([
+      getAvaxBalance(wallet.address),
+      getEusdcBalance(wallet.address, privateKey)
+    ]);
+
+    return res.status(200).send(
+      Response.sendResponse(
+        true,
+        {
+          walletBalances: {
+            avax: avaxBalance,
+            eusdc: eusdcBalance
+          }
+        },
+        "SUCCESS",
+        200
+      )
     );
+
+
   } catch (error) {
     console.log(error);
-    return res.status(500).send(
-      Response.sendResponse(false, null, error.message, 500)
-    );
+    return res.status(500).send(Response.sendResponse(false, null, error.message, 500));
   }
 };
+
 
 module.exports = {
   sendFromEntityWallet,
