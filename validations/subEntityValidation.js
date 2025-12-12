@@ -12,5 +12,18 @@ const registerEntitySchema = {
         to_wallet_address: Joi.string().required(),
         amount: Joi.number().positive().required(),
     }),
+
+    transferTokenValidation: Joi.object().keys({
+        sub_entity_id: Joi.number().required(),
+        tokenType: Joi.string().valid('AVAX', 'USDC', 'eUSDC', 'avax', 'usdc', 'eusdc').required()
+            .messages({
+                'any.only': 'tokenType must be one of: AVAX, USDC, eUSDC'
+            }),
+        recipient: Joi.string().required(),
+        amount: Joi.number().positive().required()
+            .messages({
+                'number.positive': 'Valid amount is required'
+            }),
+    }),
 };
 module.exports = registerEntitySchema;

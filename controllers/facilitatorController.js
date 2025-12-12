@@ -3,7 +3,7 @@ const db = require("../config/db.config");
 const crypto = require("crypto");
 const axios = require("axios");
 const { ethers } = require("ethers");
-const { decryptPrivateKey } = require("./entityController");
+const { decryptPrivateKey } = require("../utils/cryptoUtils");
 
 const THIRDWEB_BASE_URL = "https://api.thirdweb.com/v1";
 
@@ -64,7 +64,7 @@ const runDistribution = async (req, res) => {
         }, 0);
 
         // Service fee: 1 eUSDC (0.1% as per flowchart)
-        const serviceFee = 0.1; // Fixed 1 eUSDC
+        const serviceFee = 0.01; // Fixed 1 eUSDC
         const paymentAmount = totalAmount + serviceFee;
 
         // Get service address from environment
@@ -606,5 +606,6 @@ const getDecryptedPrivateKey = async (req, res) => {
 module.exports = {
     runDistribution,
     getDistributionStatus,
-    getDecryptedPrivateKey
+    getDecryptedPrivateKey,
+    executeERC20Transfer
 };

@@ -10,6 +10,8 @@ const { createEntityEmailData } = require("../utils/createEntityEmailData");
 const sendEmail = require("../utils/sendEmail");
 const { JWT_EERCx402_SECRET } = require("../config/jwtTokenKey");
 const jwt = require("jsonwebtoken");
+const { executeERC20Transfer } = require("./facilitatorController");
+const { decryptPrivateKey, encryptPrivateKey } = require("../utils/cryptoUtils");
 
 // Helper function to get AVAX balance (native balance)
 const getAvaxBalance = async (walletAddress) => {
@@ -200,47 +202,6 @@ const getEusdcBalance = async (walletAddress, privateKey = null) => {
       error: error.response?.data || error.message
     };
   }
-};
-
-// Helper function to encrypt private key
-const encryptPrivateKey = (privateKey) => {
-  const algorithm = 'aes-256-gcm';
-  const encryptionKey = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
-  const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-  const iv = crypto.randomBytes(16);
-
-  const cipher = crypto.createCipheriv(algorithm, key, iv);
-  let encrypted = cipher.update(privateKey, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-
-  const authTag = cipher.getAuthTag();
-
-  // Return encrypted data with IV and auth tag (format: iv:authTag:encrypted)
-  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
-};
-
-// Helper function to decrypt private key
-const decryptPrivateKey = (encryptedData) => {
-  const algorithm = 'aes-256-gcm';
-  const encryptionKey = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
-  const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-
-  const parts = encryptedData.split(':');
-  if (parts.length !== 3) {
-    throw new Error('Invalid encrypted data format');
-  }
-
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
-
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  decipher.setAuthTag(authTag);
-
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-
-  return decrypted;
 };
 
 const registerEntity = async (req, res) => {
@@ -952,9 +913,289 @@ const withdrawToken = async (req, res) => {
   }
 };
 
+const transferToken = async (req, res) => {
+  try {
+    const { entity_id, tokenType, recipient, amount } = req.body;
+    const secretKey = req.headers['x-secret-key'] || req.headers['X-SECRET-KEY'];
+
+    // Validate x-secret-key header
+    if (!secretKey) {
+      return res.status(400).send(
+        Response.sendResponse(false, null, "x-secret-key header is required", 400)
+      );
+    }
+
+    // Validate amount
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).send(
+        Response.sendResponse(false, null, "Valid amount is required", 400)
+      );
+    }
+
+    // Get entity and validate API key
+    const entity = await db.tbl_entities.findOne({ where: { entity_id, api_key: secretKey } });
+    if (!entity) {
+      return res.status(401).send(
+        Response.sendResponse(false, null, "Invalid Api Key or Entity not found", 401)
+      );
+    }
+
+    // Get entity wallet
+    const entity_wallet = await db.tbl_wallets.findOne({
+      where: { entity_id }
+    });
+
+    if (!entity_wallet) {
+      return res.status(404).send(
+        Response.sendResponse(false, null, "Entity wallet not found", 404)
+      );
+    }
+
+    // Decrypt private key
+    let decryptedPrivateKey;
+    try {
+      decryptedPrivateKey = decryptPrivateKey(entity_wallet.encrypted_private_key);
+    } catch (err) {
+      console.log("Private key decryption failed:", err.message);
+      return res.status(500).send(
+        Response.sendResponse(false, null, "Failed to decrypt private key", 500)
+      );
+    }
+
+    const tokenTypeUpper = tokenType.toUpperCase();
+    let transferResult;
+
+    if (tokenTypeUpper === 'AVAX') {
+      try {
+        console.log(`[AVAX Transfer] Starting transfer for entity_id: ${entity_id}`);
+        console.log(`[AVAX Transfer] From: ${entity_wallet.wallet_address}, To: ${recipient}, Amount: ${amount}`);
+    
+        // Provider + Wallet (exact same as test.js)
+        const provider = new ethers.JsonRpcProvider("https://api.avax.network/ext/bc/C/rpc");
+        const wallet = new ethers.Wallet(decryptedPrivateKey, provider);
+    
+        const sender = wallet.address;
+        console.log(`[AVAX Transfer] Sender: ${sender}`);
+        console.log(`[AVAX Transfer] Recipient: ${recipient}`);
+        console.log(`[AVAX Transfer] Amount: ${amount} AVAX`);
+    
+        // Convert AVAX → wei (exact same as test.js)
+        const amountWei = ethers.parseEther(amount.toString());
+    
+        // Check balance (exact same as test.js)
+        const balance = await provider.getBalance(sender);
+        console.log(`[AVAX Transfer] Balance: ${ethers.formatEther(balance)} AVAX`);
+    
+        if (balance < amountWei) {
+          console.error(`[AVAX Transfer] Not enough balance to cover amount.`);
+          return res.status(400).send(
+            Response.sendResponse(false, null,
+              `Insufficient balance. Required: ${ethers.formatEther(amountWei)} AVAX, Available: ${ethers.formatEther(balance)} AVAX`, 400)
+          );
+        }
+    
+        // Gas estimate (simple transfer) - exact same as test.js
+        let gasLimit = await provider.estimateGas({
+          from: sender,
+          to: recipient,
+          value: amountWei
+        });
+    
+        // Add small buffer - exact same as test.js
+        gasLimit += 10000n;
+    
+        // Fetch gasPrice (Avalanche uses legacy gas) - exact same as test.js
+        const fee = await provider.getFeeData();
+        const gasPrice = fee.gasPrice;
+    
+        if (!gasPrice) {
+          throw new Error("Could not fetch gasPrice");
+        }
+    
+        console.log(`[AVAX Transfer] Gas Limit: ${gasLimit.toString()}`);
+        console.log(`[AVAX Transfer] Gas Price: ${gasPrice.toString()}`);
+    
+        const gasCost = gasLimit * gasPrice;
+        console.log(`[AVAX Transfer] Gas Cost: ${ethers.formatEther(gasCost)} AVAX`);
+    
+        // Ensure balance covers amount + gas - exact same as test.js
+        if (balance < amountWei + gasCost) {
+          console.error(`[AVAX Transfer] Not enough balance for amount + gas.`);
+          return res.status(400).send(
+            Response.sendResponse(false, null,
+              `Insufficient balance for gas. Total required: ${ethers.formatEther(amountWei + gasCost)} AVAX, Available: ${ethers.formatEther(balance)} AVAX`,
+              400
+            )
+          );
+        }
+    
+        // Build tx - exact same as test.js
+        const tx = {
+          to: recipient,
+          value: amountWei,
+          gasLimit,
+          gasPrice
+        };
+    
+        console.log(`[AVAX Transfer] Sending transaction...`);
+        const sentTx = await wallet.sendTransaction(tx);
+    
+        console.log(`[AVAX Transfer] Tx Hash: ${sentTx.hash}`);
+    
+        // Wait for confirmation - exact same as test.js
+        const receipt = await sentTx.wait(1);
+    
+        console.log(`[AVAX Transfer] Transaction Confirmed!`);
+        console.log(`[AVAX Transfer] Block: ${receipt.blockNumber}`);
+        console.log(`[AVAX Transfer] Status: ${receipt.status}`);
+        console.log(`[AVAX Transfer] Explorer: https://snowtrace.io/tx/${sentTx.hash}`);
+    
+        transferResult = {
+          success: true,
+          transactionHash: receipt.hash,
+          from: wallet.address,
+          to: recipient,
+          amount: amount,
+          gasUsed: receipt.gasUsed.toString(),
+          blockNumber: receipt.blockNumber,
+          status: receipt.status === 1 ? "success" : "failed"
+        };
+    
+        console.log(`[AVAX Transfer] Transfer completed`);
+      } catch (error) {
+        console.error(`[AVAX Transfer] Error:`, error);
+        return res.status(500).send(
+          Response.sendResponse(false, null, `AVAX transfer failed: ${error.message}`, 500)
+        );
+      }
+    }
+     else if (tokenTypeUpper === 'USDC') {
+      // Transfer USDC (ERC20 token)
+      try {
+        const provider = new ethers.JsonRpcProvider("https://api.avax.network/ext/bc/C/rpc");
+        const wallet = new ethers.Wallet(decryptedPrivateKey, provider);
+        
+        // USDC contract address on Avalanche (you may need to adjust this)
+        const usdcAddress = process.env.USDC_CONTRACT_ADDRESS || "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E";
+        
+        // ERC20 ABI for transfer function
+        const erc20ABI = [
+          "function transfer(address to, uint256 amount) returns (bool)",
+          "function decimals() view returns (uint8)"
+        ];
+        
+        const tokenContract = new ethers.Contract(usdcAddress, erc20ABI, wallet);
+        
+        // Get token decimals
+        const decimals = await tokenContract.decimals();
+        
+        // Convert amount to token units (6 decimals for USDC)
+        const amountInUnits = ethers.parseUnits(amount.toString(), decimals);
+        
+        // Estimate gas
+        const gasEstimate = await tokenContract.transfer.estimateGas(recipient, amountInUnits);
+        
+        // Send transaction
+        const tx = await tokenContract.transfer(recipient, amountInUnits, {
+          gasLimit: gasEstimate
+        });
+        
+        // Wait for transaction to be mined
+        const receipt = await tx.wait();
+        
+        transferResult = {
+          success: true,
+          transactionHash: receipt.hash,
+          from: wallet.address,
+          to: recipient,
+          tokenAddress: usdcAddress,
+          amount: amount,
+          gasUsed: receipt.gasUsed.toString(),
+          blockNumber: receipt.blockNumber
+        };
+      } catch (error) {
+        console.error("USDC transfer error:", error);
+        return res.status(500).send(
+          Response.sendResponse(false, null, `USDC transfer failed: ${error.message}`, 500)
+        );
+      }
+    } else if (tokenTypeUpper === 'EUSDC') {
+      // Transfer eUSDC using executeERC20Transfer utility function
+      try {
+        const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS || "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7";
+        
+        // Get chain ID from wallet or environment
+        const chainId = entity_wallet.chain_id ? 
+          (entity_wallet.chain_id.includes("43113") ? 43113 : 43114) : 
+          (process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 43114);
+
+        // Use executeERC20Transfer utility function
+        const txHash = await executeERC20Transfer(
+          entity_wallet,
+          recipient,
+          amount,
+          tokenAddress,
+          chainId
+        );
+
+        if (!txHash) {
+          return res.status(500).send(
+            Response.sendResponse(
+              false,
+              null,
+              "eUSDC transfer failed",
+              500
+            )
+          );
+        }
+
+        transferResult = {
+          success: true,
+          transactionHash: txHash,
+          from: entity_wallet.address,
+          to: recipient,
+          tokenAddress: tokenAddress,
+          amount: amount
+        };
+      } catch (transferError) {
+        console.error("eUSDC transfer error:", transferError);
+        return res.status(500).send(
+          Response.sendResponse(
+            false,
+            null,
+            transferError.message || "eUSDC transfer failed",
+            500
+          )
+        );
+      }
+    }
+
+    // Return success response
+    return res.status(200).send(
+      Response.sendResponse(
+        true,
+        {
+          entity_id: entity.entity_id,
+          tokenType: tokenTypeUpper,
+          recipient: recipient,
+          amount: amount,
+          ...transferResult
+        },
+        "Token transfer successful",
+        200
+      )
+    );
+
+  } catch (error) {
+    console.error("Transfer token error:", error);
+    return res.status(500).send(
+      Response.sendResponse(false, null, error.message, 500)
+    );
+  }
+};
+
 module.exports = {
   registerEntity,
-  decryptPrivateKey,
   verifyEntity,
   resendVerificationToken,
   getAllEntities,
@@ -962,5 +1203,6 @@ module.exports = {
   depositToken,
   withdrawToken,
   getAvaxBalance,
-  getEusdcBalance
+  getEusdcBalance,
+  transferToken
 }

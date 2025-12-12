@@ -20,6 +20,11 @@ router.post("/withdraw", entityController.withdrawToken);
 
 router.post("/get-entity", entityController.getAllEntities);
 
+router.post("/transfer",
+  JoiMiddleWare(entitySchema.transferTokenValidation, "body"),
+  entityController.transferToken
+);
+
 router.get("/:entity_id", entityController.getEntityById);
 
 module.exports = router;

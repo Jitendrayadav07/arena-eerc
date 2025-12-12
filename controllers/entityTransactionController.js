@@ -4,7 +4,7 @@ const Response = require("../classes/Response");
 const db = require("../config/db.config");
 const { ethers } = require("ethers");
 const TRANSACTION = require("../constants/transactionConstants");
-const { decryptPrivateKey } = require("./entityController");
+const { decryptPrivateKey } = require("../utils/cryptoUtils");
 require("dotenv").config();
 const { Op, QueryTypes, Sequelize } = require("sequelize");
 

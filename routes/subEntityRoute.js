@@ -20,4 +20,9 @@ router.post("/withdraw", subEntityController.withdrawToken);
 
 router.post("/get-sub-entity-by-email", subEntityController.getSubEntityByEmail);
 
+router.post("/transfer",
+    JoiMiddleWare(subEntityValidation.transferTokenValidation, "body"),
+    subEntityController.transferToken
+);
+
 module.exports = router;
